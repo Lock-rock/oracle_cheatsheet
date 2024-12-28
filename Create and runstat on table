@@ -1,0 +1,11 @@
+CREATE RUNSTAT ON TABLE:
+
+CREATE INDEX index_name ON table_name(column1[,column2,...]);
+
+DROP INDEX:
+
+DROP INDEX index_name;
+
+RUN RUNSTATS ON SINGEL TABLE:
+
+exec dbms_stats.gather_table_stats (ownname => 'foo', tabname => 'bar', estimate_percent => dbms_stats.auto_sample_size, cascade => TRUE);
