@@ -1,0 +1,9 @@
+#############################SHOW PDBS###########################################################
+
+START PDBS;
+
+alter pluggable database DOCM_DB open;
+
+STOP PDBS;
+
+alter pluggable database DOCM_DB CLOSE IMMEDIATE;
