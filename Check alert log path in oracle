@@ -1,0 +1,1 @@
+select value from GV$DIAG_INFO WHERE name='Diag Trace';
