@@ -1,0 +1,195 @@
+Pre-Requisites
+Before setting up Data Guard Broker, ensure that:
+
+You have an Oracle Database environment configured with a primary and standby database.
+Data Guard is already configured and running between the primary and standby databases.
+Both the primary and standby databases are using Oracle Enterprise Edition.
+Oracle Net Services is configured to allow connectivity between the primary and standby systems.
+
+Step 1: Enable Force Logging and Archive Log Mode on Primary
+First, ensure that the primary database is in archive log mode and force logging is enabled:
+
+Log in to the primary database as SYSDBA:
+
+
+sqlplus / as sysdba
+Enable force logging:
+
+
+ALTER DATABASE FORCE LOGGING;
+Ensure the database is in ARCHIVELOG mode:
+
+
+ARCHIVE LOG LIST;
+If the database is not in archive log mode, put it in archive log mode:
+
+
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE ARCHIVELOG;
+ALTER DATABASE OPEN;
+Step 2: Configure the Primary and Standby Database Parameters
+You need to configure several initialization parameters on both the primary and standby databases to enable Data Guard Broker.
+
+On the Primary Database:
+Set the DB_UNIQUE_NAME and LOG_ARCHIVE_CONFIG:
+
+
+ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(primary_db, standby_db)' SCOPE=BOTH;
+ALTER SYSTEM SET DB_UNIQUE_NAME='primary_db' SCOPE=SPFILE;
+Set the LOG_ARCHIVE_DEST_2 parameter to point to the standby database:
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_2='SERVICE=standby_db ASYNC 
+VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=standby_db' SCOPE=BOTH;
+
+Enable the Data Guard Broker:
+
+
+ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
+Set the FAL_SERVER and FAL_CLIENT:
+
+
+ALTER SYSTEM SET FAL_SERVER='standby_db' SCOPE=BOTH;
+ALTER SYSTEM SET FAL_CLIENT='primary_db' SCOPE=BOTH;
+On the Standby Database:
+Set the DB_UNIQUE_NAME and LOG_ARCHIVE_CONFIG:
+
+
+ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(primary_db, standby_db)' SCOPE=BOTH;
+ALTER SYSTEM SET DB_UNIQUE_NAME='standby_db' SCOPE=SPFILE;
+Set the LOG_ARCHIVE_DEST_2 parameter to point to the primary database:
+
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_2='SERVICE=primary_db ASYNC 
+VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=primary_db' SCOPE=BOTH;
+Enable the Data Guard Broker:
+
+
+ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
+Set the FAL_SERVER and FAL_CLIENT:
+
+
+ALTER SYSTEM SET FAL_SERVER='primary_db' SCOPE=BOTH;
+ALTER SYSTEM SET FAL_CLIENT='standby_db' SCOPE=BOTH;
+Step 3: Set Up Static Listener Entries
+Make sure that the static listener entries are present on both the primary and standby databases to handle the Data Guard Broker connections.
+
+Open the listener.ora file on both primary and standby servers.
+
+Add a static listener entry for the databases. Example:
+
+
+(SID_DESC =
+  (GLOBAL_DBNAME = primary_db_DGMGRL)
+  (ORACLE_HOME = /u01/app/oracle/product/19.0.0/dbhome_1)
+  (SID_NAME = primary_db)
+)
+Restart the listener:
+
+
+lsnrctl reload
+Step 4: Create the Data Guard Configuration Using DGMGRL
+Now that the initialization parameters are set, use the Data Guard Command-Line Interface (DGMGRL) to configure the Data Guard Broker.
+
+Connect to the primary database using DGMGRL:
+
+
+dgmgrl sys/password@primary_db
+Create a Data Guard configuration:
+
+
+CREATE CONFIGURATION 'DGConfig' AS
+  PRIMARY DATABASE IS 'primary_db'
+  CONNECT IDENTIFIER IS 'primary_db';
+Add the standby database to the configuration:
+
+
+ADD DATABASE 'standby_db' AS CONNECT IDENTIFIER IS 'standby_db';
+Enable the configuration:
+
+
+ENABLE CONFIGURATION;
+Verify the Data Guard configuration:
+
+
+SHOW CONFIGURATION;
+Step 5: Verify the Data Guard Setup
+You can verify that the Data Guard Broker is working properly by using DGMGRL commands.
+
+Check the configuration status:
+
+
+SHOW CONFIGURATION;
+This command should return the status of both the primary and standby databases. If everything is correct, the status should be "SUCCESS".
+
+Check the primary and standby database status:
+
+
+SHOW DATABASE 'primary_db';
+SHOW DATABASE 'standby_db';
+The status of each database should show "SUCCESS" and "ONLINE" as the role.
+
+Step 6: Switchover and Failover Using Data Guard Broker
+After setting up Data Guard Broker, you can easily perform switchover and failover operations using the DGMGRL command-line utility.
+
+Switchover
+To perform a switchover from the primary to the standby database:
+
+Connect to DGMGRL:
+
+
+dgmgrl sys/password@primary_db
+Issue the switchover command:
+
+
+SWITCHOVER TO 'standby_db';
+Verify the switchover status:
+
+
+SHOW CONFIGURATION;
+After the switchover, the former standby database becomes the primary database, and the former primary database becomes the standby.
+
+Failover
+To perform a failover to the standby database (in case of a primary database failure):
+
+Connect to DGMGRL:
+
+
+dgmgrl sys/password@standby_db
+Issue the failover command:
+
+
+FAILOVER TO 'standby_db';
+Verify the failover status:
+
+
+SHOW CONFIGURATION;
+After the failover, the standby database takes over as the primary database.
+
+Step 7: Monitoring and Managing Data Guard with Broker
+Monitor the configuration:
+
+
+SHOW CONFIGURATION VERBOSE;
+This will give you detailed information about the Data Guard configuration.
+
+Check log gaps:
+
+You can check for log transport and apply lag between the primary and standby databases.
+
+
+SHOW DATABASE 'standby_db' STATUSREPORT;
+Disable or enable specific databases:
+
+To disable a database:
+
+
+DISABLE DATABASE 'standby_db';
+To enable it again:
+
+
+ENABLE DATABASE 'standby_db';
+Remove a database from the configuration (e.g., for maintenance):
+
+
+REMOVE DATABASE 'standby_db';
