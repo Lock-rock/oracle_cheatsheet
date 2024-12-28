@@ -1,0 +1,15 @@
+RMAN SCRIPT STATUS:
+
+col sid for 9999
+col serial# for 9999999
+col spid for a5
+col client_info for a20
+select b.sid, b.serial#, a.spid, b.client_info
+from v$process a, v$session b
+where a.addr=b.paddr and client_info like 'rman%';
+
+KILL RMAN BACKUP:
+
+select 'Alter system kill session '''||b.sid||','||b.serial#||''' immediate;'
+from v$process a, v$session b
+where a.addr=b.paddr and client_info like 'rman%';
