@@ -1,0 +1,16 @@
+check privs on database:
+
+SELECT * FROM USER_SYS_PRIVS; 
+SELECT * FROM USER_TAB_PRIVS;
+SELECT * FROM USER_ROLE_PRIVS;
+
+check grant on user in oracle database:
+
+select * from dba_role_privs connect by prior granted_role = grantee start with grantee = '&USER' order by 1,2,3;
+select * from dba_sys_privs  where grantee = '&USER' or grantee in (select granted_role from dba_role_privs connect by prior granted_role = grantee start with grantee = '&USER') order by 1,2,3;
+select * from dba_tab_privs  where grantee = '&USER' or grantee in (select granted_role from dba_role_privs connect by prior granted_role = grantee start with grantee = '&USER') order by 1,2,3,4;
+
+
+SELECT 'GRANT ' || privilege || ' TO ITGI_RI' AS grant_statement
+FROM dba_sys_privs 
+WHERE grantee = 'ITGI_RI';
