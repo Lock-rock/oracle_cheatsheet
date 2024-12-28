@@ -1,0 +1,55 @@
+SELECT * FROM v$timezone_file;
+
+Startup database in upgrade mode:
+
+shutdown immediate;
+startup upgrade;
+
+Start upgrade window:
+SET SERVEROUTPUT ON
+
+DECLARE
+  l_tz_version PLS_INTEGER;
+BEGIN
+  l_tz_version := DBMS_DST.get_latest_timezone_version;
+ 
+  DBMS_OUTPUT.put_line('l_tz_version=' || l_tz_version);
+  DBMS_DST.begin_upgrade(l_tz_version);
+END;
+/
+
+Check primary and secondary time zone versions:
+
+SELECT PROPERTY_NAME, SUBSTR(property_value, 1, 30) value
+FROM DATABASE_PROPERTIES
+WHERE PROPERTY_NAME LIKE 'DST_%'
+ORDER BY PROPERTY_NAME;
+
+Startup database in normal mode:
+shut immediate;
+startup;
+
+Do the upgrade:
+
+SET SERVEROUTPUT ON
+
+DECLARE
+  l_failures   PLS_INTEGER;
+BEGIN
+  DBMS_DST.upgrade_database(l_failures);
+  DBMS_OUTPUT.put_line('DBMS_DST.upgrade_database : l_failures=' || l_failures);
+  DBMS_DST.end_upgrade(l_failures);
+  DBMS_OUTPUT.put_line('DBMS_DST.end_upgrade : l_failures=' || l_failures);
+END;
+/
+
+Check new settings:
+
+SELECT * FROM v$timezone_file;
+
+COLUMN property_name FORMAT A30
+COLUMN property_value FORMAT A20 
+SELECT property_name, property_value
+FROM   database_properties
+WHERE  property_name LIKE 'DST_%'
+ORDER BY property_name;
