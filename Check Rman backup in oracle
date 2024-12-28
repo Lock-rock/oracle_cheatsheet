@@ -1,0 +1,53 @@
+SHOW HOURS:
+
+set lines 300
+col STATUS format a22
+col hrs format 999.99
+select
+SESSION_KEY, SESSION_RECID, SESSION_STAMP,INPUT_TYPE, STATUS,
+to_char(START_TIME,'mm/dd/yy hh24:mi') start_time,
+to_char(END_TIME,'mm/dd/yy hh24:mi')   end_time,
+elapsed_seconds/3600                   hrs
+from V$RMAN_BACKUP_JOB_DETAILS
+order by session_key;
+
+
+
+
+
+SELECT SID, SERIAL#, CONTEXT, SOFAR, TOTALWORK,
+ROUND (SOFAR/TOTALWORK*100, 2) "% COMPLETE"
+FROM V$SESSION_LONGOPS
+WHERE OPNAME LIKE 'RMAN%' AND OPNAME NOT LIKE '%aggregate%'
+AND TOTALWORK! = 0 AND SOFAR <> TOTALWORK;
+
+
+
+set linesize 180 heading off
+set heading on pagesize 200
+column status format a10;
+column TIME_TAKEN format a10;
+column INPUT_BYTES format a13;
+column OUTPUT_BYTES format a13;
+column start_time format a16;
+column END_TIME format a16;
+column BKP_TYPE format a10;
+column ses_recid format 9999999;
+column device format a7;
+column "OUTBYTES/SEC" for a14;
+column "INBYTES/SEC" for a14;
+SELECT b.session_recid SES_RECID,
+b.session_stamp SES_STAMP,
+b.output_device_type DEVICE,
+to_char(b.start_time,'DD-MM-YY HH24:MI') "START_TIME",
+b.input_type BKP_TYPE,
+to_char(b.END_TIME,'DD-MM-YY HH24:MI') "END_TIME",
+b.input_bytes_display INPUT_BYTES,
+b.INPUT_BYTES_PER_SEC_DISPLAY "INBYTES/SEC",
+b.output_bytes_display OUTPUT_BYTES,
+b.output_bytes_per_sec_display "OUTBYTES/SEC",
+b.status STATUS,
+b.time_taken_display TIME_TAKEN
+FROM v$rman_backup_job_details b
+WHERE b.start_time > (SYSDATE - &amp)
+ORDER BY b.start_time desc;
