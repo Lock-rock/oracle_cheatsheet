@@ -1,0 +1,73 @@
+Access Control List(ACL) is a fine-grained security mechanism. It is a list of access control entries to restrict the hosts that are allowed to connect to the Oracle database.
+
+Users or roles are called principals.
+Operations are called privileges.
+
+Following are the steps for Create ACLs for public or HR schema:
+
+Create the ACL
+
+BEGIN
+DBMS_NETWORK_ACL_ADMIN.CREATE_ACL (
+acl => 'hr_utl_http.xml',
+description => 'Allow mail',
+principal => 'PUBLIC',  --- you can assign PUBLIC or user like 'HR'
+is_grant => TRUE,
+privilege => 'connect',
+start_date => SYSTIMESTAMP,
+end_date => NULL);
+COMMIT;
+END;
+/
+2. Assign ACL to network.
+
+BEGIN
+DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL (
+acl => 'hr_utl_http.xml',
+host => '192.168.63.63', -- specify the host IP address 
+lower_port => 34,       -- specify the port range lower value (* for all)
+upper_port => 63);      -- specify the port range higher value
+COMMIT;
+END;
+/
+3. Grant privilege to user or Public
+
+-- Grant connect permission 
+BEGIN
+DBMS_NETWORK_ACL_ADMIN.ADD_PRIVILEGE(
+acl => 'hr_utl_http.xml',
+principal => 'PUBLIC',  --if you want user like 'HR' 
+is_grant => true,
+privilege => 'connect');
+COMMIT;
+END;
+/
+
+-- grant resolve permission
+BEGIN
+DBMS_NETWORK_ACL_ADMIN.ADD_PRIVILEGE(
+acl => 'hr_utl_http.xml',
+principal => 'PUBLIC',  --if you want user like 'HR' 
+is_grant => true,
+privilege => 'resolve');
+COMMIT;
+END;
+/
+4. Verified the ACL is created.
+
+SELECT * FROM DBA_NETWORK_ACLS;
+SELECT * FROM DBA_NETWORK_ACL_PRIVILEGES;
+Rollback or Remove the ACL permission.
+
+Remove the created permission or ACL rule from the Oracle Database.
+
+
+--Un-assign network from ACL:
+exec DBMS_NETWORK_ACL_ADMIN.UNASSIGN_ACL(acl =>'hr_utl_mail.xml',lower_port =>'*',upper_port =>25);
+
+-- Remove privilege from an user:
+exec DBMS_NETWORK_ACL_ADMIN.DELETE_PRIVILEGE(acl =>'hr_utl_mail.xml',principal =>'PUBLIC',is_grant =>TRUE,privilege =>'connect');
+exec DBMS_NETWORK_ACL_ADMIN.DELETE_PRIVILEGE(acl =>'hr_utl_mail.xml',principal =>'PUBLIC',is_grant =>TRUE,privilege =>'resolve');
+
+-- Drop ACL:
+exec DBMS_NETWORK_ACL_ADMIN.DROP_ACL (acl => 'hr_utl_mail.xml' );
