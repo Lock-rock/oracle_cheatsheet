@@ -1,0 +1,45 @@
+col START_TIME for a30;
+col END_TIME for a30;
+col STATUS for a10;
+select  start_time, end_time ,status from DBA_OPTSTAT_OPERATIONS where operation ='gather_database_stats';
+
+LAST RUN STAT ON ORACLE:
+select owner,TABLE_NAME,STATS_UPDATE_TIME from dba_tab_stats_history;
+
+
+DBMS_STATS.GATHER_TABLE_STATS is used to gather stats for a single table:
+EXEC DBMS_STATS.gather_table_stats('HR','EMPLOYEES');
+
+DBMS_STATS.GATHER_INDEX_STATS is used to gather index stats:
+EXEC DBMS_STATS.gather_index_stats('HR','EMPLOYEES_PK');
+
+DBMS_STATS.GATHER_SCHEMA_STATS package is used to gather entire schema stats:
+EXEC DBMS_STATS.gather_schema_stats('SCOTT');
+
+
+DBMS_STATS.GATHER_DATABASE_STATS package is used to gather entire database stats:
+EXEC DBMS_STATS.gather_database_stats;
+
+DBMS_STATS.GATHER_DICTIONARY_STATS package will gather dictionary statistics:
+EXEC DBMS_STATS.gather_dictionary_stats;
+
+
+Gather System and Fixed Object Stats: 
+EXEC DBMS_STATS.gather_system_stats;
+EXEC DBMS_STATS.gather_fixed_objects_stats;
+
+
+DBA_TAB_STATISTICS allows you to check stale statistics on a specific table:
+
+SELECT owner, table_name, last_analyzed, stale_stats
+FROM dba_tab_statistics
+WHERE table_name='EMPLOYEES'
+and owner='HR';
+
+
+
+DBA_IND_STATISTICS allows you to check stale statistics on specific index:
+
+SELECT owner, table_name, index_name last_analyzed, stale_stats FROM dba_ind_statistics 
+WHERE table_name='EMPLOYEES'
+and owner = 'HR';
