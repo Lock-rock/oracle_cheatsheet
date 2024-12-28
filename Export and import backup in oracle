@@ -1,0 +1,33 @@
+ORACLE EXPDP-BACKUP:
+
+expdp \"sys/sys123@UAT_DWH as sysdba\" dumpfile=SI_CORE_DWH.dmp directory=WEEKLY_BACKUP logfile=SI_CORE_DWH.log
+
+use paramerters:
+tables=user.tablename (with comma "," use for multipla table)
+parallel=4 (for use fast parallel)
+schemas=PRODCLASS,DBACLASS (for number or schema)
+include=TABLE (for table only in schema)
+exclude=INDEX (for index only in table)
+
+ORACLE IMPDP-BACKUP:
+impdp \"sys/sys123 as sysdba\" dumpfile=SI_CORE_DWH.dmp directory=IMPDP logfile=SI_CORE_DWH.log
+
+LIST OF REMAPS:
+FULL=Y
+REMAP_TABLESPACE=users:data
+REMAP_SCHEMA=source_schema:target_schema
+REMAP_TABLE=source_schema.source_table:target_schema.target_table
+REMAP_DATAFILE=source_datafile:target_datafile
+REMAP_SCHEMA_TABLE=old_table:new_table
+table_exists_action=replace
+
+Note: when two or more database run on same user then use:
+
+ORACLE_HOME=/cordyshome/app/oracle/product/12.2.0/dbhome_1
+export ORACLE_HOME
+ORACLE_SID=DEVCordysDB
+export ORACLE_SID
+PATH=$ORACLE_HOME/bin:$PATH
+export PATH
+
+****************here past wiht export script***************
