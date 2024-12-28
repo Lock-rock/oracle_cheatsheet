@@ -1,0 +1,82 @@
+Query to check the Jobs:
+
+
+select client_name, status from DBA_AUTOTASK_CLIENT;
+
+
+
+
+Disabling the Jobs:
+
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.DISABLE(client_name=>'sql tuning advisor', operation=>NULL, window_name=>NULL);
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.DISABLE(client_name=>'auto space advisor', operation=>NULL, window_name=>NULL);
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.DISABLE(client_name=>'auto optimizer stats collection', operation=>NULL, window_name=>NULL);
+
+SQL> SELECT client_name, status FROM dba_autotask_client;
+
+CLIENT_NAME STATUS
+---------------------------------- ---------------
+auto optimizer stats collection DISABLED
+auto space advisor DISABLED
+sql tuning advisor DISABLED
+
+Enabling the Jobs:
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.ENABLE(client_name=>'sql tuning advisor', operation=>NULL, window_name=>NULL);
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.ENABLE(client_name=>'auto space advisor', operation=>NULL, window_name=>NULL);
+
+SQL> EXEC DBMS_AUTO_TASK_ADMIN.ENABLE(client_name=>'auto optimizer stats collection', operation=>NULL, window_name=>NULL);
+
+
+Select from DBA_AUTOTASK_CLIENT is slow.
+
+
+SQL> SET TIMING ON FEED ON
+
+SQL> SELECT client_name FROM DBA_AUTOTASK_CLIENT;
+
+CLIENT_NAME
+
+----------------------------------------------------------------
+
+auto space advisor
+
+auto optimizer stats collection
+
+sql tuning advisor
+
+3 rows selected.
+
+Elapsed: 00:01:10.19
+
+
+Purge DBMS_SCHEDULER logs and gathering Dictionary Statistics 
+
+ 
+SQL> EXEC DBMS_SCHEDULER.PURGE_LOG();
+
+PL/SQL procedure successfully completed.
+
+ 
+SQL> EXEC DBMS_STATS.GATHER_DICTIONARY_STATS;
+
+PL/SQL procedure successfully completed.
+
+
+SQL> SELECT client_name FROM DBA_AUTOTASK_CLIENT ;
+
+CLIENT_NAME
+
+----------------------------------------------------------------
+
+auto space advisor
+
+auto optimizer stats collection
+
+sql tuning advisor
+
+Elapsed: 00:00:00.25 
