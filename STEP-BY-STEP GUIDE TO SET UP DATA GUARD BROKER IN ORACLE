@@ -32,45 +32,18 @@ Step 2: Configure the Primary and Standby Database Parameters
 You need to configure several initialization parameters on both the primary and standby databases to enable Data Guard Broker.
 
 On the Primary Database:
-Set the DB_UNIQUE_NAME and LOG_ARCHIVE_CONFIG:
+system set log_archive_config='dg_config=(suncdb,suncdb_s)' scope=both;
+alter system set log_archive_dest_1= 'LOCATION=/u01/app/oracle/oradata/suncdb/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=suncdb' scope=both;  ==> For PRIMARY DB Archive Location
+alter system set log_archive_dest_2='SERVICE=suncdb_s LGWR ASYNC valid_for=(online_logfiles,primary_role) DB_UNIQUE_NAME=suncdb_s' scope=both;  ==> For STANDBY DB Archive Location
+alter system set log_archive_dest_state_1='ENABLE' scope=both ;
+alter system set log_archive_dest_state_2='ENABLE' scope=both ;
+alter system set remote_login_passwordfile='EXCLUSIVE' scope=spfile;
+alter system set fal_client='suncdb' scope=both;
+alter system set fal_server='suncdb_s' scope=both;
+alter system set standby_file_management= 'AUTO' scope=both;
 
-
-ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(primary_db, standby_db)' SCOPE=BOTH;
-ALTER SYSTEM SET DB_UNIQUE_NAME='primary_db' SCOPE=SPFILE;
-Set the LOG_ARCHIVE_DEST_2 parameter to point to the standby database:
-
-ALTER SYSTEM SET LOG_ARCHIVE_DEST_2='SERVICE=standby_db ASYNC 
-VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=standby_db' SCOPE=BOTH;
-
-Enable the Data Guard Broker:
-
-
-ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
-Set the FAL_SERVER and FAL_CLIENT:
-
-
-ALTER SYSTEM SET FAL_SERVER='standby_db' SCOPE=BOTH;
-ALTER SYSTEM SET FAL_CLIENT='primary_db' SCOPE=BOTH;
-On the Standby Database:
-Set the DB_UNIQUE_NAME and LOG_ARCHIVE_CONFIG:
-
-
-ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(primary_db, standby_db)' SCOPE=BOTH;
-ALTER SYSTEM SET DB_UNIQUE_NAME='standby_db' SCOPE=SPFILE;
-Set the LOG_ARCHIVE_DEST_2 parameter to point to the primary database:
-
-
-ALTER SYSTEM SET LOG_ARCHIVE_DEST_2='SERVICE=primary_db ASYNC 
-VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=primary_db' SCOPE=BOTH;
-Enable the Data Guard Broker:
-
-
-ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
-Set the FAL_SERVER and FAL_CLIENT:
-
-
-ALTER SYSTEM SET FAL_SERVER='primary_db' SCOPE=BOTH;
-ALTER SYSTEM SET FAL_CLIENT='standby_db' SCOPE=BOTH;
+alter system set db_file_name_convert='/oracle/dbguru/','/oracle/dbguru/','/u02/dbguru/','/u02/dbguru/' scope=spfile;
+alter system set log_file_name_convert='/oracle/dbguru/redo/','/oracle/dbguru/redo/' scope=spfile;
 Step 3: Set Up Static Listener Entries
 Make sure that the static listener entries are present on both the primary and standby databases to handle the Data Guard Broker connections.
 
