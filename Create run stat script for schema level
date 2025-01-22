@@ -1,0 +1,11 @@
+Generate the DBMS_STATS Commands:
+
+SELECT 'EXEC DBMS_STATS.GATHER_TABLE_STATS(' ||
+       '''' || OWNER || ''', ''' || TABLE_NAME || ''', ' ||
+       'NULL, NULL, NULL, NULL, NULL);' AS gather_stats_command
+FROM ALL_TABLES
+WHERE OWNER = 'YOUR_SCHEMA_NAME'  -- Replace with your schema name
+ORDER BY TABLE_NAME;
+
+Execute the Command:
+EXEC DBMS_STATS.GATHER_TABLE_STATS('MYSCHEMA', 'TABLE1', NULL, NULL, NULL, NULL, NULL);
