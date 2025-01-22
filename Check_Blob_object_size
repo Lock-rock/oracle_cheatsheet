@@ -1,0 +1,20 @@
+https://smarttechways.com/2023/03/30/find-the-larger-size-lob-segment-in-oracle/
+
+SET LINESIZE 200
+SET PAGESIZE 0
+COLUMN owner FORMAT A10
+COLUMN table_name FORMAT A25
+COLUMN column_name FORMAT A25
+COLUMN segment_name FORMAT A25
+COLUMN size_mb FORMAT 99999.00
+
+SELECT *
+FROM   (SELECT l.owner,
+               l.table_name,
+               l.column_name,
+               l.segment_name,
+               ROUND(s.bytes/1024/1024/1024,2) size_gb
+        FROM   dba_lobs l
+               JOIN dba_segments s ON s.owner = l.owner AND s.segment_name = l.segment_name where l.owner not in ('SYS','SYSTEM')
+        ORDER BY 5 DESC)
+--WHERE  ROWNUM <= 10;
