@@ -1,0 +1,33 @@
+table size in GB:
+
+SELECT 
+    owner,
+    segment_name AS table_name,
+    ROUND(SUM(bytes) / 1024 / 1024 / 1024, 2) AS table_size_gb
+FROM 
+    dba_segments
+WHERE 
+    segment_type = 'TABLE'
+GROUP BY 
+    owner, segment_name
+ORDER BY 
+    table_size_gb DESC;
+               
+               
+index_size in GB:
+
+SELECT 
+    i.owner,
+    i.index_name,
+    i.table_name,
+    ROUND(SUM(p.bytes) / 1024 / 1024 / 1024, 2) AS index_size_gb
+FROM 
+    dba_indexes i
+JOIN 
+    dba_segments p ON i.index_name = p.segment_name AND i.owner = p.owner
+WHERE 
+    p.segment_type = 'INDEX'
+GROUP BY 
+    i.owner, i.index_name, i.table_name
+ORDER BY 
+    index_size_gb DESC;
