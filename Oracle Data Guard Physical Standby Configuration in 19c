@@ -1,0 +1,316 @@
+Step-by-step guide to configure a physical standby database.
+There are various steps in which you can configure physical standby database. We need to make several changes to the primary database before we can even setup the standby database. In this article, we will set up physical standby on Oracle Linux 7.6 server.
+
+Physical Standby Configuration Overview 
+
+Primary database changes 
+
+Configure network 
+
+Configure redo transport 
+
+Build standby 
+
+Verify standby configuration 
+
+This article applies to Oracle 12c R2 database version
+
+Physical Standby Configuration Overview
+
+Primary details
+
+SID: ip7
+ORACLE_HOME: /u01/app/oracle/product/12.2.0.1
+Host Name: srv1.dbagenesis.com
+Standby details
+
+SID: ip7
+ORACLE_HOME: /u01/app/oracle/product/12.2.0.1
+Host Name: srv2.dbagenesis.com
+Assumption: we assume that primary server has a database (SID=ip7) up and running. The standby database has Oracle 12cR2 installation done in the same oracle home location as primary.
+
+
+
+Primary database changes
+
+Primary must run in archive log mode. Check the archive log mode
+
+SELECT log_mode FROM v$database;
+
+LOG_MODE
+------------
+NOARCHIVELOG
+If it is not running in archive log mode, then enable it
+
+SQL> shutdown immediate
+SQL> startup mount
+SQL> alter database archivelog;
+SQL> alter database open;
+SQL> archive log list;
+Enable force logging on primary: In oracle, users can restrict redo generation for SQL by using NOLOGGING clause. This NOLOGGING transaction will be a problem for physical standby. Hence, we force logging so even user uses NOLOGGING clause, every SQL will be logged on to redo
+
+SQL> alter database force logging;
+SQL> select name, force_logging from v$database;
+Standby file management: We need to make sure whenever we add/drop datafile in primary database, those files are also added / dropped on standby
+
+SQL> alter system set standby_file_management = 'AUTO';
+Create standby log files: You must create standby log files on primary. These files are used by a standby database to store redo it receives from primary database. Our primary may become standby later and we would need them, so better to create it. First check the current log groups
+
+SQL> select GROUP#, THREAD#, bytes/1024/1024, MEMBERS, STATUS from v$log;
+
+    GROUP#    THREAD# BYTES/1024/1024    MEMBERS STATUS
+---------- ---------- --------------- ---------- ----------------
+         1          1             200          1 INACTIVE
+         2          1             200          1 CURRENT
+         3          1             200          1 INACTIVE
+
+SQL> select member from v$logfile;
+
+MEMBER
+---------------------------------------------------
+/u01/data/db_files/ip7/redo03.log
+/u01/data/db_files/ip7/redo02.log
+/u01/data/db_files/ip7/redo01.log
+Add the standby logfiles, make sure group number should be from a different series like in this case we choose to start with 11 and above. This helps in easy differentiation.
+
+
+Make sure to keep the thread# and logfile size exactly same. Oracle also recommends to always create n+1 standby log files. Where n is the total number of logfiles
+
+ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 11 '/u01/data/db_files/ip7/stb_redo1.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 12 '/u01/data/db_files/ip7/stb_redo2.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 13 '/u01/data/db_files/ip7/stb_redo3.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 14 '/u01/data/db_files/ip7/stb_redo4.log' SIZE 200M;
+Check the standby log files via below query
+
+SQL> SELECT GROUP#,THREAD#,SEQUENCE#,ARCHIVED,STATUS FROM V$STANDBY_LOG;
+Enable flashback on primary: Flashback database is highly recommended because in case of failover, you need not re-create primary database from scratch
+
+SQL> alter system set db_recovery_file_dest_size=45g;
+SQL> alter database flashback on;
+SQL> select flashback_on from v$database;
+If flashback parameters are not set properly, use below commands
+
+SQL> show parameter recovery;
+SQL> alter system set db_recovery_file_dest='/u01/app/oracle/fast_recovery_area';
+SQL> alter system set db_recovery_file_dest_size=45g;
+SQL> alter database flashback on;
+Check DB Unique name parameter on primary: Make sure your primary database has DB_UNIQUE_NAME parameter set for consistency. If it’s not set properly, use ALTER SYSTEM SET command
+
+SQL> show parameter db_name
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- -------------
+db_name                              string      ip7
+
+SQL> show parameter db_unique_name
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- -------------
+db_unique_name                       string      ip7
+
+
+Configure network
+
+Use below tns entries and put them under ORACLE user HOME/network/admin/tnsnames.ora. Change host as per your environment and execute on both primary and standby.
+
+
+Notice the use of the SID, rather than the SERVICE_NAME in the entries. This is important as the broker will need to connect to the databases when they are down, so the services will not be present.
+
+vi $ORACLE_HOME/network/admin/tnsnames.ora
+
+ip7 =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv1.dbagenesis.com)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SID = ip7)
+    )
+  )
+
+ip7_stb =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv2.dbagenesis.com)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SID = ip7)
+    )
+  )
+Configure listener on primary database. Since the broker will need to connect to the database when it’s down, we can’t rely on auto-registration with the listener, hence the explicit entry for the database.
+
+vi $ORACLE_HOME/network/admin/listener.ora
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv1.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = ip7_DGMGRL)
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0.1)
+      (SID_NAME = ip7)
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+Configure listener on standby. Since the broker will need to connect to the database when it’s down, we can’t rely on auto-registration with the listener, hence the explicit entry for the database.
+
+vi $ORACLE_HOME/network/admin/listener.ora
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv2.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = ip7_stb_DGMGRL)
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0.1)
+      (SID_NAME = ip7)
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+Once the listener.ora changes are in place, restart the listener on both servers
+
+lsnrctl stop
+lsnrctl start
+
+
+Configure redo transport
+
+Note: if you plan to use Oracle Data Guard broker, then you can skip this section “configure redo transport” and jump to “Build Standby” section.
+
+Configure redo transport from primary to standby:  The below statement says that if the current database is in primary role, then transport logs to standby. We need to change service and db_unique_name for same parameter on standby server
+
+On Primary Server
+=================
+SQL> alter system set log_archive_dest_2 = 'service=ip7_stb async valid_for=(online_logfiles,primary_role) db_unique_name=ip7_stb';
+
+Set FAL_SERVER: Fetch Archive Log parameter tells primary as to where it will get archives from
+
+On Primary Server
+=================
+SQL> alter system set fal_server = 'ip7_stb';
+Set dg_config parameter: This parameter defines which databases are in data guard configuration
+
+On Primary Server
+=================
+SQL> alter system set log_archive_config = 'dg_config=(ip7,ip7_stb)';
+
+
+Build standby
+
+Create pfile on primary, open it and create the necessary directories on the standby server
+
+On Primary Server
+=================
+SQL> create pfile from spfile;
+exit
+
+$ cd $ORACLE_HOME/dbs
+$ cat initip7.ora
+
+On Standby Server
+=================
+Create directories as you find in the initip7.ora file
+
+mkdir -p /u01/app/oracle/admin/ip7/adump
+mkdir -p /u01/data/db_files/ip7
+mkdir -p /u01/FRA/ip7
+On standby server, create parameter file with just db_name parameter and start the instance in nomount mode
+
+On standby server
+=================
+
+vi $ORACLE_HOME/dbs/initip7.ora
+*.db_name='ip7'
+
+$ export ORACLE_SID=ip7
+$ sqlplus / as sysdba
+
+SQL> STARTUP NOMOUNT;
+SQL> exit;
+
+--you must exit from sqlplus, else cloning will fail
+Copy password file: Copy the password file from primary to standby server
+
+$ scp orapwip7 oracle@srv2:$ORACLE_HOME/dbs
+If no password file exists, create one via below command and then copy
+
+orapwd file=$ORACLE_HOME/dbs/orapwip7 force=y
+Duplicate primary database via RMAN: On primary, connect to RMAN, specifying a full connect string for both the TARGET and AUXILIARY instances. Do not attempt to use OS authentication else, the cloning will fail
+
+To DORECOVERY option starts recovery by applying all available logs immediately after restore
+On primary server
+=================
+rman target sys@ip7 auxiliary sys@ip7_stb
+
+RMAN> DUPLICATE TARGET DATABASE FOR STANDBY 
+FROM ACTIVE DATABASE DORECOVER 
+SPFILE 
+SET db_unique_name='ip7_stb'
+SET fal_server='ip7'
+SET log_archive_dest_2='service=ip7 async valid_for=(online_logfiles,primary_role) db_unique_name=ip7'
+NOFILENAMECHECK;
+Once cloning is done, you should see below at RMAN prompt
+
+Finished Duplicate Db at 07-DEC-2015
+Enable flashback on standby: As we know the importance of flashback in data guard, we must enable it on standby as well
+
+On Standby Server
+=================
+SQL> alter database flashback on;
+Bounce database & start MRP (Apply Service): It's good to bounce standby, put it in mount mode and start MRP process
+
+On Standby Server
+=================
+SQL> shut immediate;
+SQL> startup mount;
+SQL> alter database recover managed standby database disconnect;
+
+Verify standby configuration
+
+Once MRP is started, we must verify which archive log number MRP is applying on standby
+
+On standby:
+===========
+select process, status, sequence# from v$managed_standby;
+
+select sequence#, applied, first_time, next_time, name filename from v$archived_log order by sequence#;
+Below queries will help you identify issues when your data guard setup is out of sync
+
+On both primary & standby:
+==========================
+set lines 999;
+select * from v$dataguard_status order by timestamp;
+
+select dest_id, status, destination, error from v$archive_dest where dest_id<=2;
+
+IF you see ORA-16058, do this on primary:
+=========================================
+SQL> alter system set log_archive_dest_state_2='DEFER';
+SQL> alter system set log_archive_dest_state_2='ENABLE';
+SQL> select dest_id, status, destination, error from v$archive_dest where dest_id<=2;
+
+On primary:
+===========
+select sequence#, first_time, next_time, applied, archived from v$archived_log where name = 'ip7_stb' order by first_time;
+
+select STATUS, GAP_STATUS from V$ARCHIVE_DEST_STATUS where DEST_ID = 2;
+
+archive log list;
+Configure Archive deletion policy: We must set this policy in order to prevent accidental deletion of archive logs on primary database
+
+On Primary:
+===========
+rman target / 
+configure archivelog deletion policy to applied on all standby;
