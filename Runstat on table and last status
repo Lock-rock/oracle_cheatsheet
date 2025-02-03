@@ -43,3 +43,14 @@ DBA_IND_STATISTICS allows you to check stale statistics on specific index:
 SELECT owner, table_name, index_name last_analyzed, stale_stats FROM dba_ind_statistics 
 WHERE table_name='EMPLOYEES'
 and owner = 'HR';
+
+
+
+*****************************************************************************************
+runstat runing and last runing status:
+select Owner, TABLE_NAME, LAST_ANALYZED, CHAIN_CNT, NUM_ROWS, BLOCKS, EMPTY_BLOCKS from dba_tab_statistics where stale_stats = 'YES';
+
+select Owner, TABLE_NAME, LAST_ANALYZED, CHAIN_CNT, NUM_ROWS, BLOCKS, EMPTY_BLOCKS from dba_tab_statistics;
+
+exexute owner all table runstats:
+EXEC DBMS_STATS.gather_schema_stats (ownname => 'DBSNMP', cascade =>true, degree =>2);
