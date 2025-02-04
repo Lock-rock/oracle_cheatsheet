@@ -49,3 +49,7 @@ select message, to_char(timestamp,'HH:MI:SS') timestamp
 SELECT MESSAGE FROM V$DATAGUARD_STATUS;
 
 select dest_name,status,error from v$archive_dest where status='ERROR';
+
+
+********************************************************************************************************************************************************************************************
+Check primary and standby databases are in sync Dataguard
