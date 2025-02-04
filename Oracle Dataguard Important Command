@@ -1,0 +1,51 @@
+Check the Dataguard database status on primary and standby
+
+select status,instance_name,database_role,protection_mode from v$database,v$instance;
+Query to apply redo log on standby. Following command useful for real time apply
+
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE USING CURRENT LOGFILE; 
+To Start the MRP process using archive log
+
+alter database recover managed standby database disconnect from session;
+To check applied archieve logs
+
+SELECT SEQUENCE#, APPLIED FROM V$ARCHIVED_LOG;
+Cancel the MRP Process
+
+alter database recover managed standby database cancel;
+Status of MRP Process
+
+select process,status,client_process,thread#,sequence#,block#,blocks,delay_mins from v$managed_standby;
+To get the difference between Received and applied logs.
+
+select  MAX_RECEIVED,MAX_APPLIED,(MAX_RECEIVED - MAX_APPLIED) as "Difference" from (SELECT
+    ARCHIVED_THREAD#, MAX(ARCHIVED_SEQ#) as MAX_RECEIVED,
+    APPLIED_THREAD#,  MAX(APPLIED_SEQ#) as  MAX_APPLIED
+ FROM
+   V$ARCHIVE_DEST_STATUS) ARCH ; 
+ 
+
+To check the status of Archive log
+
+
+col name for a50;
+col thread# for a30;
+col SEQUENCE# for a30;
+select THREAD#,SEQUENCE#,name,APPLIED from v$ARCHIVED_LOG;
+
+select THREAD#,SEQUENCE#,FIRST_TIME,NEXT_TIME,BLOCKS,BLOCK_SIZE,ARCHIVED,APPLIED,STATUS,IS_RECOVERY_DEST_FILE from v$ARCHIVED_LOG;
+
+
+TO check if dataguard in synchronizing with standby.
+
+select thread#,max(sequence#) from v$archived_log where applied='YES' group by thread#;
+Dataguard Error with timestamp
+
+select message, to_char(timestamp,'HH:MI:SS') timestamp
+ from v$dataguard_status
+ where severity in ('Error','Fatal')
+ order by timestamp;
+
+SELECT MESSAGE FROM V$DATAGUARD_STATUS;
+
+select dest_name,status,error from v$archive_dest where status='ERROR';
