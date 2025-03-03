@@ -9,3 +9,12 @@ DROP INDEX index_name;
 RUN RUNSTATS ON SINGEL TABLE:
 
 exec dbms_stats.gather_table_stats (ownname => 'foo', tabname => 'bar', estimate_percent => dbms_stats.auto_sample_size, cascade => TRUE);
+
+
+CHECK RUNSTAT STATUS :
+
+select Owner, TABLE_NAME, LAST_ANALYZED, CHAIN_CNT, NUM_ROWS, BLOCKS, EMPTY_BLOCKS from dba_tab_statistics where stale_stats = 'YES';
+
+select Owner, TABLE_NAME, LAST_ANALYZED, CHAIN_CNT, NUM_ROWS, BLOCKS, EMPTY_BLOCKS from dba_tab_statistics;
+
+EXEC DBMS_STATS.gather_schema_stats (ownname => 'DBSNMP', cascade =>true, degree =>2);
