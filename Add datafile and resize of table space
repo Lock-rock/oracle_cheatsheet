@@ -1,0 +1,22 @@
+======================================================Query to Check File_name, initial size and maxsize:================================
+select FILE_NAME,FILE_ID,AUTOEXTENSIBLE,bytes/1024/1024/1024,STATUS,MAXBYTES/1024/1024/1024 from dba_data_files where TABLESPACE_NAME='&TABLESPACE_NAME';
+set linesize 400;
+====================================================To check the location of existing datafiles:============================================
+show parameter db_create_file_dest;
+select file_name from dba_data_files;
+====================================================Query to Add Datafile to the Tablespace:================================================
+ALTER TABLESPACE TABLESPACE_NAME ADD DATAFILE '+DATA' SIZE 16M AUTOEXTEND ON MAXSIZE 31G;
+====================================================To enable datafile autoextend and set the Maxsize=======================================
+ALTER DATABASE datafile 'Datafile_name' autoextend ON maxsize 120 G;
+
+====================================================To Resize Datafiles=====================================================================
+alter database datafile 'datafile_name' resize 20G;
+
+====================================================To check tem Datafiles=====================================================================
+select tb.tablespace_name, tf.file_name from dba_tablespaces tb left join dba_temp_files tf on tf.tablespace_name = tb.tablespace_name where tb.contents = 'TEMP';
+
+====================================================To add Datafiles=====================================================================
+ALTER TABLESPACE SYSAUX ADD DATAFILE '/u02/PEGAPRD/datafile/pdb.dbf' SIZE 32767m;
+
+====================================================To resize Datafiles=====================================================================
+ALTER TABLESPACE SYSAUX ADD DATAFILE '/u02/PEGAPRD/datafile/pdb.dbf' RESIZE 32767m;
