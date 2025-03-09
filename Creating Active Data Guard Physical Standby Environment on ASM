@@ -1,0 +1,987 @@
+0. Enviroment
+Source:
+
+		Platform: Linuxx86_64
+		Server Name: RAC1.RAJASEKHAR.COM, IP: 192.168.2.101
+		DB Version: Oracle 11.2.0.3, File system: ASM
+		DB Name: w5005pr, DB_UNIQUE_NAME: w5005pr
+		Flashback: Disabled
+		Oracle Home Path: /u01/app/oracle/product/11.2.0/db_1
+		
+Target:
+		
+		Platform: Linuxx86_64
+		Server Name: RAC2.RAJASEKHAR.COM, IP: 192.168.2.102
+		DB Version: Oracle 11.2.0.3, , File system: ASM
+		DB Name: w5005pr, DB_UNIQUE_NAME: w5005prg
+		Flashback: Disabled
+		Oracle Home Path: /u01/app/oracle/product/11.2.0/db_1
+
+1. Enable Force Logging
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   READ WRITE           PRIMARY          w5005pr
+
+SQL>
+
+
+SQL> select force_logging from v$database;
+
+FOR
+---
+NO
+
+SQL> ALTER DATABASE FORCE LOGGING;
+
+Database altered.
+
+SQL> select force_logging from v$database;
+
+FOR
+---
+YES
+
+SQL>
+
+2. Create Password File on Primary
+
+[oracle@rac1 ~]$ cd $ORACLE_HOME/dbs
+[oracle@rac1 dbs]$ rm hc_apac.dat
+[oracle@rac1 dbs]$ ls -ltr
+total 20
+-rw-r--r-- 1 oracle oinstall 2851 May 15  2009 init.ora
+-rw-r----- 1 oracle oinstall   24 Jan  6 22:46 lkW5005PR
+-rw-r----- 1 oracle oinstall 1536 Jan  6 22:47 orapww5005pr
+-rw-r----- 1 oracle oinstall   41 Jan  6 22:48 initw5005pr.ora
+-rw-rw---- 1 oracle oinstall 1544 Jan  6 22:48 hc_w5005pr.dat
+[oracle@rac1 dbs]$
+
+3. Configure a Standby Redo Log on Primary (Not Mandatory)
+
+SQL> set lines 180
+SQL> col MEMBER for a60
+SQL> select b.thread#, a.group#, a.member, b.bytes FROM v$logfile a, v$log b WHERE a.group# = b.group#;
+
+   THREAD#     GROUP# MEMBER                                                            BYTES
+---------- ---------- ------------------------------------------------------------ ----------
+         1          3 +DATA/apac/onlinelog/group_3.263.900283687                     52428800
+         1          2 +DATA/apac/onlinelog/group_2.262.900283687                     52428800
+         1          1 +DATA/apac/onlinelog/group_1.261.900283685                     52428800
+
+SQL>
+
+SQL> ALTER DATABASE ADD standby logfile '+DATA' SIZE 50m;
+
+Database altered.
+
+SQL> ALTER DATABASE ADD standby logfile '+DATA' SIZE 50m;
+
+Database altered.
+
+SQL> ALTER DATABASE ADD standby logfile '+DATA' SIZE 50m;
+
+Database altered.
+
+SQL> ALTER DATABASE ADD standby logfile '+DATA' SIZE 50m;
+
+Database altered.
+
+SQL>
+
+SQL> set lines 180
+SQL> col MEMBER for a60
+SQL> select b.thread#, a.group#, a.member, b.bytes FROM v$logfile a, v$log b WHERE a.group# = b.group#;
+
+   THREAD#     GROUP# MEMBER                                                            BYTES
+---------- ---------- ------------------------------------------------------------ ----------
+         1          3 +DATA/w5005pr/onlinelog/group_3.263.900456463                  52428800
+         1          2 +DATA/w5005pr/onlinelog/group_2.266.900456463                  52428800
+         1          1 +DATA/w5005pr/onlinelog/group_1.267.900456461                  52428800
+
+SQL>
+
+4. Verify Archive Mode Enabled on Primary
+
+SQL> archive log list
+Database log mode              Archive Mode
+Automatic archival             Enabled
+Archive destination            +FRA
+Oldest online log sequence     1
+Next log sequence to archive   2
+Current log sequence           2
+SQL>
+
+5. Set Primary Database Initialization Parameters
+
+SQL> show parameter pfile;
+
+NAME       TYPE         VALUE
+---------- ----------- --------------------------------
+spfile     string       +DATA/w5005pr/spfilew5005pr.ora
+
+SQL> create pfile='/home/oracle/initw5005pr.ora.bkp' from spfile;
+
+File created.
+
+SQL> alter system set db_unique_name='w5005pr' scope=spfile;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(w5005pr,w5005prg)' scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_DEST_1='LOCATION=+FRA VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=w5005pr' scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_DEST_2='SERVICE=w5005prg LGWR ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=w5005prg' scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE_1=ENABLE scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE_2=ENABLE scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_FORMAT='%t_%s_%r.dbf' SCOPE=SPFILE;
+
+System altered.
+
+SQL> ALTER SYSTEM SET LOG_ARCHIVE_MAX_PROCESSES=30 scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE=EXCLUSIVE SCOPE=SPFILE;
+
+System altered.
+
+SQL> ALTER SYSTEM SET fal_client=w5005pr scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET fal_server=w5005prg scope=both;
+
+System altered.
+
+SQL> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO;
+
+System altered.
+
+SQL> create pfile='/home/oracle/initw5005pr.ora' from spfile;
+
+File created.
+
+SQL>
+
+
+[oracle@rac1 ~]$ cat initw5005pr.ora
+w5005pr.__db_cache_size=503316480
+w5005pr.__java_pool_size=16777216
+w5005pr.__large_pool_size=16777216
+w5005pr.__pga_aggregate_target=520093696
+w5005pr.__sga_target=754974720
+w5005pr.__shared_io_pool_size=0
+w5005pr.__shared_pool_size=201326592
+w5005pr.__streams_pool_size=0
+*.audit_file_dest='/u01/app/oracle/admin/w5005pr/adump'
+*.audit_trail='db'
+*.compatible='11.2.0.0.0'
+*.control_files='+DATA/w5005pr/controlfile/current.268.900456457'
+*.db_block_size=8192
+*.db_create_file_dest='+DATA'
+*.db_domain=''
+*.db_name='w5005pr'
+*.db_unique_name='w5005pr'
+*.diagnostic_dest='/u01/app/oracle'
+*.dispatchers='(PROTOCOL=TCP) (SERVICE=w5005prXDB)'
+*.fal_client='W5005PR'
+*.fal_server='W5005PRG'
+*.log_archive_config='DG_CONFIG=(w5005pr,w5005prg)'
+*.log_archive_dest_1='LOCATION=+FRA VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=w5005pr'
+*.log_archive_dest_2='SERVICE=w5005prg LGWR ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=w5005prg'
+*.log_archive_dest_state_1='ENABLE'
+*.log_archive_dest_state_2='ENABLE'
+*.log_archive_format='%t_%s_%r.dbf'
+*.log_archive_max_processes=30
+*.memory_target=1262485504
+*.open_cursors=300
+*.processes=150
+*.remote_login_passwordfile='EXCLUSIVE'
+*.standby_file_management='AUTO'
+*.undo_tablespace='UNDOTBS1'
+[oracle@rac1 ~]$
+
+6. Transfer SPFILE AND PASSWORD FILE TO STANDBY SIDE
+
+Copy the password file from the primary $ORACLE_HOME/dbs and rename it to the standby database name.
+The username is required to be SYS and the password needs to be the same on the Primary and Standby.
+The best practice for this is to copy the passwordfile as suggested.
+The password file name must match the instance name/SID used at the standby site, not the DB_NAME.
+
+[oracle@rac1 ~]$ scp initw5005pr.ora oracle@rac2:/home/oracle/initw5005prg.ora
+initw5005pr.ora                                                                            100% 1255     1.2KB/s   00:00
+[oracle@rac1 ~]$
+
+[oracle@rac1 ~]$ cd /u01/app/oracle/product/11.2.0/db_1/dbs/
+[oracle@rac1 dbs]$ scp orapww5005pr oracle@rac2:/u01/app/oracle/product/11.2.0/db_1/dbs/orapww5005prg
+orapww5005pr                                                                               100% 1536     1.5KB/s   00:00
+[oracle@rac1 dbs]$
+
+[oracle@rac2 ~]$ cd /u01/app/oracle/product/11.2.0/db_1/dbs/
+[oracle@rac2 dbs]$ ll
+total 36
+-rw-r--r-- 1 oracle oinstall  2851 May 15  2009 init.ora
+-rw-r----- 1 oracle oinstall  1536 Jan  7 21:35 orapww5005prg
+[oracle@rac2 dbs]$
+
+7. Set Standby Database Initialization Parameters
+
+Edit shown highlighted to set it up for the standby role
+
+[oracle@rac2 ~]$ cat initw5005prg.ora
+w5005prg.__db_cache_size=503316480
+w5005prg.__java_pool_size=16777216
+w5005prg.__large_pool_size=16777216
+w5005prg.__pga_aggregate_target=520093696
+w5005prg.__sga_target=754974720
+w5005prg.__shared_io_pool_size=0
+w5005prg.__shared_pool_size=201326592
+w5005prg.__streams_pool_size=0
+*.audit_file_dest='/u01/app/oracle/admin/w5005prg/adump'
+*.audit_trail='db'
+*.compatible='11.2.0.0.0'
+#*.control_files='+DATA/w5005prg/controlfile/current.268.900456457'
+*.db_block_size=8192
+*.db_create_file_dest='+DATA'
+*.db_domain=''
+*.db_name='w5005pr'
+*.db_unique_name='w5005prg'
+*.diagnostic_dest='/u01/app/oracle'
+*.dispatchers='(PROTOCOL=TCP) (SERVICE=w5005prgXDB)'
+*.fal_client='W5005PRG'
+*.fal_server='W5005PR'
+*.log_archive_config='DG_CONFIG=(w5005prg,w5005pr)'
+*.log_archive_dest_1='LOCATION=+FRA VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=w5005prg'
+*.log_archive_dest_2='SERVICE=w5005pr LGWR ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=w5005pr'
+*.log_archive_dest_state_1='ENABLE'
+*.log_archive_dest_state_2='DEFER'
+*.log_archive_format='%t_%s_%r.dbf'
+*.log_archive_max_processes=30
+*.memory_target=1262485504
+*.open_cursors=300
+*.processes=150
+*.remote_login_passwordfile='EXCLUSIVE'
+*.standby_file_management='AUTO'
+*.undo_tablespace='UNDOTBS1'
+[oracle@rac2 ~]$
+
+8. Crete required directories on Standby
+
+[oracle@rac2 ~]$ mkdir -p /u01/app/oracle/admin/w5005prg/adump
+[oracle@rac2 ~]$
+
+9. Add below entry in ORATAB on Standby
+
+w5005prg:/u01/app/oracle/product/11.2.0/db_1:N
+
+10. Create spfile from pfile on Standby
+
+[oracle@rac2 ~]$ . oraenv
+ORACLE_SID = [oracle] ? w5005prg
+The Oracle base remains unchanged with value /u01/app/oracle
+[oracle@rac2 ~]$ sqlplus / as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jan 7 21:41:19 2016
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+Connected to an idle instance.
+
+SQL> startup nomount pfile='/home/oracle/initw5005prg.ora';
+ORACLE instance started.
+
+Total System Global Area 1269366784 bytes
+Fixed Size                  2227984 bytes
+Variable Size             754974960 bytes
+Database Buffers          503316480 bytes
+Redo Buffers                8847360 bytes
+SQL> create spfile='+DATA/w5005prg/spfilew5005prg.ora' from pfile='/home/oracle/initw5005prg.ora';
+
+File created.
+
+SQL> startup nomount force;
+ORACLE instance started.
+
+Total System Global Area 1269366784 bytes
+Fixed Size                  2227984 bytes
+Variable Size             754974960 bytes
+Database Buffers          503316480 bytes
+Redo Buffers                8847360 bytes
+SQL> show parameter pfile
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+spfile                               string      +DATA/w5005prg/spfilew5005prg.
+                                                 ora
+SQL>
+
+
+[oracle@rac2 dbs]$ cat initw5005prg.ora
+SPFILE='+DATA/w5005prg/spfilew5005prg.ora'
+[oracle@rac2 dbs]$
+
+11. Configure LISTENER Entries on Primary
+
+[oracle@rac1 admin]$ pwd
+/u01/app/11.2.0/grid/network/admin
+[oracle@rac1 admin]$ cat listener.ora
+# listener.ora Network Configuration File: /u01/app/11.2.0/grid/network/admin/listener.ora
+# Generated by Oracle configuration tools.
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = rac1.rajasekhar.com)(PORT = 1521))
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+
+ENABLE_GLOBAL_DYNAMIC_ENDPOINT_LISTENER=ON              # line added by Agent
+
+SID_LIST_LISTENER =
+(SID_LIST =
+        (SID_DESC =
+                (GLOBAL_DBNAME = w5005pr)
+                (SID_NAME = w5005pr)
+                (ORACLE_HOME = /u01/app/oracle/product/11.2.0/db_1)
+        )
+)
+[oracle@rac1 admin]$ lsnrctl reload
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:29:12
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+The command completed successfully
+[oracle@rac1 admin]$ lsnrctl status
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:29:23
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+Start Date                07-JAN-2016 23:05:32
+Uptime                    0 days 0 hr. 23 min. 51 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/11.2.0/grid/network/admin/listener.ora
+Listener Log File         /u01/app/oracle/diag/tnslsnr/rac1/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=rac1.rajasekhar.com)(PORT=1521)))
+Services Summary...
+Service "+ASM" has 1 instance(s).
+  Instance "+ASM", status READY, has 1 handler(s) for this service...
+Service "w5005pr" has 2 instance(s).
+  Instance "w5005pr", status UNKNOWN, has 1 handler(s) for this service...
+  Instance "w5005pr", status READY, has 1 handler(s) for this service...
+Service "w5005prXDB" has 1 instance(s).
+  Instance "w5005pr", status READY, has 1 handler(s) for this service...
+The command completed successfully
+[oracle@rac1 admin]$
+
+12. Configure LISTENER Entries on Standby
+
+[oracle@rac2 admin]$ pwd
+/u01/app/11.2.0/grid/network/admin
+[oracle@rac2 admin]$ cat listener.ora
+# listener.ora Network Configuration File: /u01/app/11.2.0/grid/network/admin/listener.ora
+# Generated by Oracle configuration tools.
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = rac2.rajasekhar.com)(PORT = 1521))
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+
+ENABLE_GLOBAL_DYNAMIC_ENDPOINT_LISTENER=ON              # line added by Agent
+
+SID_LIST_LISTENER =
+(SID_LIST =
+        (SID_DESC =
+                (GLOBAL_DBNAME = w5005prg)
+                (SID_NAME = w5005prg)
+                (ORACLE_HOME = /u01/app/oracle/product/11.2.0/db_1)
+        )
+)
+[oracle@rac2 admin]$
+
+[oracle@rac2 admin]$ lsnrctl reload
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:27:54
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+The command completed successfully
+[oracle@rac2 admin]$ lsnrctl status
+
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:28:05
+
+Copyright (c) 1991, 2011, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+Start Date                07-JAN-2016 23:05:36
+Uptime                    0 days 0 hr. 22 min. 29 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /u01/app/11.2.0/grid/network/admin/listener.ora
+Listener Log File         /u01/app/oracle/diag/tnslsnr/rac2/listener/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=EXTPROC1521)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=rac2.rajasekhar.com)(PORT=1521)))
+Services Summary...
+Service "+ASM" has 1 instance(s).
+  Instance "+ASM", status READY, has 1 handler(s) for this service...
+Service "w5005prg" has 1 instance(s).
+  Instance "w5005prg", status UNKNOWN, has 1 handler(s) for this service...
+The command completed successfully
+[oracle@rac2 admin]$
+
+13. Configure TNS Entries on Primary
+
+[oracle@rac1 admin]$ pwd
+/u01/app/oracle/product/11.2.0/db_1/network/admin
+[oracle@rac1 admin]$ cat tnsnames.ora
+# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/db_1/network/admin/tnsnames.ora
+# Generated by Oracle configuration tools.
+
+W5005PR =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = rac1.rajasekhar.com)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = w5005pr)
+    )
+  )
+
+W5005PRG =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.2.102)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = w5005prg)
+    )
+  )
+
+[oracle@rac1 admin]$
+
+[oracle@rac1 ~]$ tnsping w5005pr
+
+TNS Ping Utility for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:38:47
+
+Copyright (c) 1997, 2011, Oracle.  All rights reserved.
+
+Used parameter files:
+
+
+Used TNSNAMES adapter to resolve the alias
+Attempting to contact (DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = rac1.rajasekhar.com)(PORT = 1521)) (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = w5005pr)))
+OK (0 msec)
+[oracle@rac1 ~]$
+[oracle@rac1 ~]$ tnsping w5005prg
+
+TNS Ping Utility for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:38:56
+
+Copyright (c) 1997, 2011, Oracle.  All rights reserved.
+
+Used parameter files:
+
+
+Used TNSNAMES adapter to resolve the alias
+Attempting to contact (DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.2.102)(PORT = 1521)) (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = w5005prg)))
+OK (0 msec)
+[oracle@rac1 ~]$
+
+14. Configure LISTENER Entries on Standby
+
+[oracle@rac1 admin]$ pwd
+/u01/app/oracle/product/11.2.0/db_1/network/admin
+[oracle@rac1 admin]$ cat tnsnames.ora
+# tnsnames.ora Network Configuration File: /u01/app/oracle/product/11.2.0/db_1/network/admin/tnsnames.ora
+# Generated by Oracle configuration tools.
+
+W5005PR =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = rac1.rajasekhar.com)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = w5005pr)
+    )
+  )
+
+W5005PRG =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.2.102)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = w5005prg)
+    )
+  )
+
+[oracle@rac1 admin]$
+
+[oracle@rac2 ~]$ tnsping w5005pr
+
+TNS Ping Utility for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:40:05
+
+Copyright (c) 1997, 2011, Oracle.  All rights reserved.
+
+Used parameter files:
+
+
+Used TNSNAMES adapter to resolve the alias
+Attempting to contact (DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = rac1.rajasekhar.com)(PORT = 1521)) (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = w5005pr)))
+OK (10 msec)
+[oracle@rac2 ~]$
+[oracle@rac2 ~]$ tnsping w5005prg
+
+TNS Ping Utility for Linux: Version 11.2.0.3.0 - Production on 07-JAN-2016 23:40:08
+
+Copyright (c) 1997, 2011, Oracle.  All rights reserved.
+
+Used parameter files:
+
+
+Used TNSNAMES adapter to resolve the alias
+Attempting to contact (DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.2.102)(PORT = 1521)) (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = w5005prg)))
+OK (0 msec)
+[oracle@rac2 ~]$
+
+15. Verify connection ‘AS SYSDBA’ from Primary
+
+[oracle@rac1 ~]$ sqlplus sys/sys@w5005pr as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jan 7 23:40:49 2016
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> exit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+
+[oracle@rac1 ~]$ sqlplus sys/sys@w5005prg as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jan 7 23:41:29 2016
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+
+SQL>
+
+16. Verify connection ‘AS SYSDBA’ from Standby
+
+[oracle@rac2 ~]$ sqlplus sys/sys@w5005pr as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jan 7 23:43:03 2016
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> exit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+[oracle@rac2 ~]$
+[oracle@rac2 ~]$ sqlplus sys/sys@w5005prg as sysdba
+
+SQL*Plus: Release 11.2.0.3.0 Production on Thu Jan 7 23:43:11 2016
+
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+
+SQL> exit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, Automatic Storage Management, OLAP, Data Mining
+and Real Application Testing options
+[oracle@rac2 ~]$
+
+17. Run the duplicate from active database command from primary
+
+[oracle@rac1 ~]$ rman target sys/sys@w5005pr auxiliary sys/sys@w5005prg
+
+Recovery Manager: Release 11.2.0.3.0 - Production on Thu Jan 7 23:45:10 2016
+
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+
+connected to target database: W5005PR (DBID=4158252169)
+connected to auxiliary database: W5005PR (not mounted)
+
+RMAN> duplicate target database for standby from active database nofilenamecheck;
+
+Starting Duplicate Db at 07-JAN-16
+using target database control file instead of recovery catalog
+allocated channel: ORA_AUX_DISK_1
+channel ORA_AUX_DISK_1: SID=21 device type=DISK
+
+contents of Memory Script:
+{
+   backup as copy reuse
+   targetfile  '/u01/app/oracle/product/11.2.0/db_1/dbs/orapww5005pr' auxiliary format
+ '/u01/app/oracle/product/11.2.0/db_1/dbs/orapww5005prg'   ;
+}
+executing Memory Script
+
+Starting backup at 07-JAN-16
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=78 device type=DISK
+Finished backup at 07-JAN-16
+
+contents of Memory Script:
+{
+   sql clone "alter system set  control_files =
+  ''+DATA/w5005prg/controlfile/current.262.900546411'' comment=
+ ''Set by RMAN'' scope=spfile";
+   backup as copy current controlfile for standby auxiliary format  '+DATA/w5005prg/controlfile/current.263.900546411';
+   sql clone "alter system set  control_files =
+  ''+DATA/w5005prg/controlfile/current.263.900546411'' comment=
+ ''Set by RMAN'' scope=spfile";
+   shutdown clone immediate;
+   startup clone nomount;
+}
+executing Memory Script
+
+sql statement: alter system set  control_files =   ''+DATA/w5005prg/controlfile/current.262.900546411'' comment= ''Set by RMAN'' scope=spfile
+
+Starting backup at 07-JAN-16
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting datafile copy
+copying standby control file
+output file name=/u01/app/oracle/product/11.2.0/db_1/dbs/snapcf_w5005pr.f tag=TAG20160107T234652 RECID=1 STAMP=900546413
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:03
+Finished backup at 07-JAN-16
+
+sql statement: alter system set  control_files =   ''+DATA/w5005prg/controlfile/current.263.900546411'' comment= ''Set by RMAN'' scope=spfile
+
+Oracle instance shut down
+
+connected to auxiliary database (not started)
+Oracle instance started
+
+Total System Global Area    1269366784 bytes
+
+Fixed Size                     2227984 bytes
+Variable Size                754974960 bytes
+Database Buffers             503316480 bytes
+Redo Buffers                   8847360 bytes
+
+contents of Memory Script:
+{
+   sql clone 'alter database mount standby database';
+}
+executing Memory Script
+
+sql statement: alter database mount standby database
+
+contents of Memory Script:
+{
+   set newname for clone tempfile  1 to new;
+   switch clone tempfile all;
+   set newname for clone datafile  1 to new;
+   set newname for clone datafile  2 to new;
+   set newname for clone datafile  3 to new;
+   set newname for clone datafile  4 to new;
+   backup as copy reuse
+   datafile  1 auxiliary format new
+   datafile  2 auxiliary format new
+   datafile  3 auxiliary format new
+   datafile  4 auxiliary format new
+   ;
+   sql 'alter system archive log current';
+}
+executing Memory Script
+
+executing command: SET NEWNAME
+
+renamed tempfile 1 to +DATA in control file
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+executing command: SET NEWNAME
+
+Starting backup at 07-JAN-16
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00001 name=+DATA/w5005pr/datafile/system.260.900456399
+output file name=+DATA/w5005prg/datafile/system.264.900546429 tag=TAG20160107T234709
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:35
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00002 name=+DATA/w5005pr/datafile/sysaux.265.900456401
+output file name=+DATA/w5005prg/datafile/sysaux.265.900546465 tag=TAG20160107T234709
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:35
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00003 name=+DATA/w5005pr/datafile/undotbs1.264.900456401
+output file name=+DATA/w5005prg/datafile/undotbs1.266.900546499 tag=TAG20160107T234709
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:07
+channel ORA_DISK_1: starting datafile copy
+input datafile file number=00004 name=+DATA/w5005pr/datafile/users.269.900456401
+output file name=+DATA/w5005prg/datafile/users.267.900546507 tag=TAG20160107T234709
+channel ORA_DISK_1: datafile copy complete, elapsed time: 00:00:01
+Finished backup at 07-JAN-16
+
+sql statement: alter system archive log current
+
+contents of Memory Script:
+{
+   switch clone datafile all;
+}
+executing Memory Script
+
+datafile 1 switched to datafile copy
+input datafile copy RECID=1 STAMP=900546507 file name=+DATA/w5005prg/datafile/system.264.900546429
+datafile 2 switched to datafile copy
+input datafile copy RECID=2 STAMP=900546507 file name=+DATA/w5005prg/datafile/sysaux.265.900546465
+datafile 3 switched to datafile copy
+input datafile copy RECID=3 STAMP=900546507 file name=+DATA/w5005prg/datafile/undotbs1.266.900546499
+datafile 4 switched to datafile copy
+input datafile copy RECID=4 STAMP=900546507 file name=+DATA/w5005prg/datafile/users.267.900546507
+Finished Duplicate Db at 07-JAN-16
+
+RMAN> exit
+
+
+Recovery Manager complete.
+[oracle@rac1 ~]$
+[oracle@rac1 ~]$
+
+18. Enable MRP on Standby
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   MOUNTED              PHYSICAL STANDBY w5005prg
+
+SQL> !ps -ef | grep mrp
+oracle    4696  4666  0 23:52 pts/1    00:00:00 /bin/bash -c ps -ef | grep mrp
+oracle    4698  4696  0 23:52 pts/1    00:00:00 grep mrp
+
+SQL> alter database open;
+
+Database altered.
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   READ ONLY            PHYSICAL STANDBY w5005prg
+
+SQL> alter database recover managed standby database disconnect from session;
+
+Database altered.
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   READ ONLY WITH APPLY PHYSICAL STANDBY w5005prg
+
+SQL> !ps -ef | grep mrp
+oracle    4718     1  2 23:53 ?        00:00:00 ora_mrp0_w5005prg
+oracle    4765  4666  0 23:53 pts/1    00:00:00 /bin/bash -c ps -ef | grep mrp
+oracle    4767  4765  0 23:53 pts/1    00:00:00 grep mrp
+
+SQL>
+
+19. Verify the Physical Standby Database Is Performing Properly
+
+On Primary
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   READ WRITE           PRIMARY          w5005pr
+
+SQL> SELECT SEQUENCE#, FIRST_TIME, NEXT_TIME FROM V$ARCHIVED_LOG ORDER BY SEQUENCE#;
+
+ SEQUENCE# FIRST_TIM NEXT_TIME
+---------- --------- ---------
+         2 06-JAN-16 07-JAN-16
+         3 07-JAN-16 07-JAN-16
+         4 07-JAN-16 07-JAN-16
+         5 07-JAN-16 07-JAN-16
+         6 07-JAN-16 07-JAN-16
+         7 07-JAN-16 07-JAN-16
+         8 07-JAN-16 07-JAN-16
+
+SQL> alter system switch logfile;
+
+System altered.
+
+SQL> alter system switch logfile;
+
+System altered.
+
+SQL> select max(sequence#) from v$archived_log where archived='YES';
+
+MAX(SEQUENCE#)
+--------------
+            10
+
+SQL>
+On Standby
+
+SQL> select name, open_mode, database_role, INSTANCE_NAME from v$database,v$instance;
+
+NAME      OPEN_MODE            DATABASE_ROLE    INSTANCE_NAME
+--------- -------------------- ---------------- ----------------
+W5005PR   READ ONLY WITH APPLY PHYSICAL STANDBY w5005prg
+
+SQL> SELECT SEQUENCE#, FIRST_TIME, NEXT_TIME FROM V$ARCHIVED_LOG ORDER BY SEQUENCE#;
+
+ SEQUENCE# FIRST_TIM NEXT_TIME
+---------- --------- ---------
+         6 07-JAN-16 07-JAN-16
+         7 07-JAN-16 07-JAN-16
+         8 07-JAN-16 07-JAN-16
+         9 07-JAN-16 07-JAN-16
+        10 07-JAN-16 07-JAN-16
+
+SQL> select max(sequence#) from v$archived_log where applied='YES';
+
+MAX(SEQUENCE#)
+--------------
+            10
+
+SQL>
+
+SQL> select process,status,sequence#,thread# from v$managed_standby;
+
+PROCESS   STATUS        SEQUENCE#    THREAD#
+--------- ------------ ---------- ----------
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+ARCH      CONNECTED             0          0
+MRP0      WAIT_FOR_LOG         10          1
+RFS       IDLE                  0          0
+RFS       IDLE                  0          0
+RFS       IDLE                  0          0
+RFS       IDLE                 10          1
+
+35 rows selected.
+
+SQL>
+
+20. Add the standby database w5005prg to the local OCR.
+
+[oracle@rac2 ~]$ which srvctl
+/u01/app/oracle/product/11.2.0/db_1/bin/srvctl
+[oracle@rac2 ~]$ srvctl add database -d w5005prg -o /u01/app/oracle/product/11.2.0/db_1/ -r physical_standby -s 'READ ONLY'
+[oracle@rac2 ~]$ srvctl start database -d w5005prg
+
+[oracle@rac2 ~]$ /u01/app/11.2.0/grid/bin/crsctl stat res -t
+--------------------------------------------------------------------------------
+NAME           TARGET  STATE        SERVER                   STATE_DETAILS
+--------------------------------------------------------------------------------
+Local Resources
+--------------------------------------------------------------------------------
+ora.DATA.dg
+               ONLINE  ONLINE       rac2
+ora.FRA.dg
+               ONLINE  ONLINE       rac2
+ora.LISTENER.lsnr
+               ONLINE  ONLINE       rac2
+ora.asm
+               ONLINE  ONLINE       rac2                     Started
+ora.ons
+               OFFLINE OFFLINE      rac2
+--------------------------------------------------------------------------------
+Cluster Resources
+--------------------------------------------------------------------------------
+ora.cssd
+      1        ONLINE  ONLINE       rac2
+ora.diskmon
+      1        OFFLINE OFFLINE
+ora.evmd
+      1        ONLINE  ONLINE       rac2
+ora.w5005prg.db
+      1        ONLINE  ONLINE       rac2                     Open,Readonly
+[oracle@rac2 ~]$
