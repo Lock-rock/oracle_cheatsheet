@@ -1,0 +1,37 @@
+PRIMARY DATABASE PARAMETERS:
+
+*.db_file_name_convert=’/oracle/dbguru/’,’/oracle/dbguru/’,’/u02/dbguru/’,’/u02/dbguru/’ #optional in our setup
+*.log_files_name_convert=’/oracle/dbguru/redo/’,’/oracle/dbguru/redo/’ #optional in our setup
+*.db_name=’suncdb’
+*.db_unique_name=’suncdb’
+*.fal_client=’suncdb’
+*.fal_server=’suncdb_s’
+*.log_archive_config=’dg_config=(suncdb,suncdb_s)’
+*.log_archive_dest_1=’LOCATION=/u01/app/oracle/oradata/suncdb/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=suncdb’
+*.log_archive_dest_2=’SERVICE=suncdb_s LGWR ASYNC valid_for=(online_logfiles,primary_role) DB_UNIQUE_NAME=suncdb_s’
+*.log_archive_dest_state_1=’ENABLE’
+*.log_archive_dest_state_2=’ENABLE’
+*.remote_login_passwordfile=’EXCLUSIVE’
+*.standby_file_management=’AUTO’
+
+
+
+STANDBY DATABASE PARAMETERS:
+
+*.db_name=’suncdb’
+*.db_unique_name=’suncdb_s’
+*.fal_client=’suncdb_s’
+*.fal_server=’suncdb’
+*.log_archive_config=’dg_config=(suncdb,suncdb_s)’
+*.log_archive_dest_1=’LOCATION=/u01/app/oracle/oradata/suncdb/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=suncdb_s’
+*.log_archive_dest_2=’SERVICE=suncdb LGWR ASYNC valid_for=(online_logfiles,primary_role) DB_UNIQUE_NAME=suncdb’
+*.log_archive_dest_state_1=’ENABLE’
+*.log_archive_dest_state_2=’ENABLE’
+*.remote_login_passwordfile=’EXCLUSIVE’
+*.standby_file_management=’AUTO’
+
+*.db_unique_name=’suncdb_s
+*.log_archive_dest_1=’LOCATION=/u01/app/oracle/oradata/suncdb/arch VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=suncdb_s’
+*.log_archive_dest_2=’SERVICE=suncdb LGWR ASYNC valid_for=(online_logfiles,primary_role) DB_UNIQUE_NAME=suncdb’
+*.fal_client=’suncdb_s’
+*.fal_server=’suncdb’

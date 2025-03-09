@@ -1,0 +1,280 @@
+export ORACLE_SID=IDITPRODDB
+export ORACLE_HOME=/orahome/app/oracle/product/19.0.0/dbhome_1
+export PATH=${PATH}:${ORACLE_HOME}/bin
+
+ORACLE_HOME=/orahome/app/oracle/product/19.0.0/dbhome_1; export ORACLE_HOME
+ORACLE_SID=IDITPRODDB; export ORACLE_SID
+
+
+scp orapwIDITPRODDB oracle@10.10.2.152/orahome/app/oracle/product/19.0.0/dbhome_1/dbs            
+
+scp 1_77084_1055846782.dbf oracle@10.10.1.175:/tempfs
+
+startup nomount pfile='/orahome/app/oracle/product/19.0.0/dbhome_1/dbs/initIDITPRODDB.ora';
+
+create spfile from pfile;
+shut immediate;
+startup nomount;
+
+restore controlfile from '/backup/restore2/LEVEL_1_IDITPROD_20240223_313_1_9p2jqrvo.ctl';--only rman 
+
+ALTER DATABASE MOUNT;---rman or sql both 
+
+catalog start with '/backup/restore';      
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 30;
+
+run
+{ set newname for database to '/oradata/IDITPRODDB/datafile/IDITPRODDB/%b';
+restore  database;
+SWITCH DATAFILE ALL;
+}
+
+---- for checking restoration status----- https://www.orafaq.com/wiki/Monitor_RMAN_restore
+
+-----------for applying incrmental backup---------
+shutdown immediate;
+
+
+startup nomount
+
+restore controlfile from '/backup/restore2/LEVEL_1_IDITPROD_20240223_313_1_9p2jqrvo.ctl';  --only rman 
+
+ALTER DATABASE MOUNT;
+
+catalog start with '/backup/restore2';      
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 30;
+
+
+run
+{ set newname for database to '/oradata/IDITPRODDB/datafile/IDITPRODDB/%b';
+recover  database;
+switch datafile all;
+}
+
+RECOVER DATABASE UNTIL CANCEL USING BACKUP CONTROLFILE;
+
+ALTER DATABASE OPEN RESETLOGS;
+
+
+catalog start with '/backup/restore2';
+catalog start with 'full pathname';
+=========================================================================================================================================
+1.Set environment variable ORACLE_SID.
+
+2.Restore spfile (These can be skipped if you don't need to restore spfile or pfile from backup)
+
+ RMAN> startup nomount
+ RMAN> restore spfile from '<path to Control File auto backup>';
+ RMAN> shutdown immedate
+ RMAN> startup nomount
+3.Restore controlfile and database
+
+ RMAN> restore controlfile from '<path to Control File auto backup>';
+ RMAN> shutdown immedate
+ RMAN> startup mount
+ RMAN> restore database;
+ RMAN> recover database; -- shouldn't be needed because DB was shutdown gracefully before backup
+ RMAN> alter database open resetlogs;
+
+=====================================================================================================================================
+ 
+Call - Outbound
+------------------------------
+Call out and discussed the issue
+
+
+
+Customer had doubts about applying level 1 on top of previous level1
+
+Explained you can keep on apply level 1 on top of previous level 1 so long as you are not applying the archive logs
+
+Scenario
+
+Assuming last incremental level 1 would be 6th and after that you plan to do a PITR till 7th Aug
+
+1st Aug --> level 0
+2nd Aug --> level 1
+3rd Aug --> level 1
+
+6th Aug --> level 1
+
+7th Aug only archivelogs from 6th Aug till 7th Aug
+
+On destination db (19c)
+
+You first restore the controlfile and level 0 from Aug 1 (Assuming directory structure of 12c and 19c db are similar)
+
+Once the level 0 is restored you can then copy the Level 1 of 2nd aug alone to destination db and the catalog them. Once done you can issue recover database
+
+Repeat the restore of the level 1 backup and recovery till August 6th
+
+Assuming you want to recovery till Aug 7th Now Copy the archivelogs from 6th Aug to 7th AUg to destination and do an recovery
+
+Before opening database
+
+
+
+Brief steps
+
+
+
+Restore 12c db to 19c db
+
+Explained
+
+Step 1> On the restored server the compatiblle parameter should be same as the 12c db
+
+Step 2> restore the controlfile
+
+Step 3> Restore the Level 0 backup
+
+Step 4> When new Level1 is taken on the Source db copy it over to the destination db
+
+on Destination db (Repeat this step for all the level 1 copied>
+
+Rman target /
+
+Catalog backuppiece '<level 1 backuppiece name copied>' ;
+
+Or
+
+Catalog start with '<path of the backuppiece copied on destination>
+
+Rman> recover database ;
+
+<Once the 6th Aug level 1 is applied>
+
+
+Copy the archivelog backups from 6th Aug till 7th Aug the time you plan to do Point in time recovery
+
+Catalog start with <'path of the archiveogs backuppiece copied on destination>' ;
+
+Rman> run { set until time.... ;
+recover database ; }
+
+
+Once done
+
+<Note as explained on call if you have added a new datafile in the database then you would need to restore controlfile on such occasion else controlfile restore is required only in step 1>
+
+Step 5 :-
+==========
+
+Since the db is on 19c and backup restored from 12c you need to do an alter database open resetlogs upgrade
+
+
+First ensure redo logs point to new location on 19c
+
+SQL>Select member from v$logfile ;
+
+Alter database rename file '<Old path andname>' to '<new path and new>' ;
+
+Once done for all member
+
+re-run the above query to ensure the path has changed
+
+
+Do an fake recovery
+
+Go back to Rman prompt
+
+Rman> Alter database open restelogs upgrade ;
+
+Once db is opened (If cdb envirnoment also execute below)
+
+Connect /as sysdba
+
+alter pluggable database all open upgrade;
+
+
+Once done
+
+Execute Manual19c upgrade scripts. ==============> If you need help in what script to Run I need to open a SR with upgrade team
+
+
+
+Regards
+
+
+
+##################################################################################################################################################################################################
+SELECT 'Throughput: '||
+       ROUND(SUM(v.value/1024/1024/1024),1) || ' GB so far @ ' ||
+       ROUND(SUM(v.value/1024/1024)/NVL((SELECT MIN(elapsed_seconds)
+            FROM v$session_longops
+            WHERE opname          LIKE 'RMAN: aggregate input'
+              AND sofar           != TOTALWORK
+              AND elapsed_seconds IS NOT NULL
+       ),SUM(v.value     /1024/1024)),2) || ' MB/sec'
+FROM gv$sesstat v, v$statname n, gv$session s
+WHERE v.statistic# = n.statistic#
+  AND n.name       = 'physical write total bytes'
+  AND v.sid        = s.sid
+  AND v.inst_id    = s.inst_id
+  AND s.program LIKE 'rman@%'
+GROUP BY n.name
+/
+
+
+Restore progress
+
+alter session set nls_date_format='DD-MON-YYYY HH24:MI:SS';
+set line 2222;
+set pages 2222;
+set long 6666;
+select sl.sid, sl.opname,
+to_char(100*(sofar/totalwork), '990.9')||'%' pct_done,
+sysdate+(TIME_REMAINING/60/60/24) done_by
+from v$session_longops sl, v$session s
+where sl.sid = s.sid
+and sl.serial# = s.serial#
+and sl.sid in (select sid from v$session where module like 'backup%' or module like 'restore%' or module like 'rman%')
+and sofar != totalwork
+and totalwork > 0
+/
+
+To Get Through Put
+
+SET HEAD OFF
+SELECT 'RMAN Throughput : '||
+ROUND(SUM(v.value/(power(2,30))),1) || ' GB so far ---> Per Second Throughput = ' ||
+ROUND(SUM(v.value /(power(2,30)))/NVL((SELECT MIN(elapsed_seconds)
+FROM v$session_longops
+WHERE opname LIKE 'RMAN: aggregate input'
+AND sofar != TOTALWORK
+AND elapsed_seconds IS NOT NULL
+),SUM(v.value /(power(2,30)))),2) || ' GB'
+FROM gv$sesstat v, v$statname n, gv$session s
+WHERE v.statistic# = n.statistic#
+AND n.name = 'physical write total bytes'
+AND v.sid = s.sid
+AND v.inst_id = s.inst_id
+AND s.program LIKE 'rman@%'
+GROUP BY n.name
+/
+
+
+Restore Progress 
+
+SELECT SID, SERIAL#, CONTEXT, SOFAR, TOTALWORK,
+ROUND(SOFAR/TOTALWORK*100,2) "%_COMPLETE"
+FROM gV$SESSION_LONGOPS
+WHERE OPNAME LIKE 'RMAN%'
+AND OPNAME NOT LIKE '%aggregate%'
+AND TOTALWORK != 0
+AND SOFAR != TOTALWORK order by 6 desc;
+
+
+Restore RMAN Channel Details
+
+select s.inst_id, a.sid, CLIENT_INFO Ch, a.STATUS,
+open_time, round(BYTES/1024/1024,2) "SOFAR Mb" , round(total_bytes/1024/1024,2)
+TotMb, io_count,
+round(BYTES/TOTAL_BYTES*100,2) "% Complete" , a.type, filename
+from gv$backup_async_io a, gv$session s
+where not a.STATUS in ('UNKNOWN') and s.status='ACTIVE' and a.STATUS <> 'FINISHED'
+and a.sid=s.sid order by 6 desc,7;
+#####################################################################################################################################################################################################
+

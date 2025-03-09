@@ -1,0 +1,322 @@
+pfile for Prod:
+NPEGAPRD.__data_transfer_cache_size=0
+PEGAPRD.__data_transfer_cache_size=0
+NPEGAPRD.__db_cache_size=22548578304
+PEGAPRD.__db_cache_size=73551314944
+NPEGAPRD.__inmemory_ext_roarea=0
+PEGAPRD.__inmemory_ext_roarea=0
+NPEGAPRD.__inmemory_ext_rwarea=0
+PEGAPRD.__inmemory_ext_rwarea=0
+NPEGAPRD.__java_pool_size=268435456
+PEGAPRD.__java_pool_size=10468982784
+NPEGAPRD.__large_pool_size=536870912
+PEGAPRD.__large_pool_size=1879048192
+PEGAPRD.__oracle_base='/u01/app/oracle'#ORACLE_BASE set from environment
+NPEGAPRD.__oracle_base='/u01/app/oracle'#ORACLE_BASE set from environment
+NPEGAPRD.__pga_aggregate_target=2147483648
+PEGAPRD.__pga_aggregate_target=6442450944
+NPEGAPRD.__sga_target=26843545600
+PEGAPRD.__sga_target=105226698752
+NPEGAPRD.__shared_io_pool_size=536870912
+PEGAPRD.__shared_io_pool_size=536870912
+NPEGAPRD.__shared_pool_size=2885681152
+PEGAPRD.__shared_pool_size=17985175552
+NPEGAPRD.__streams_pool_size=0
+PEGAPRD.__streams_pool_size=536870912
+PEGAPRD.__unified_pga_pool_size=0
+*.archive_lag_target=0
+*.audit_file_dest='/u01/app/oracle/admin/NPEGAPRD/adump'
+*.audit_trail='db'
+*.compatible='19.0.0'
+*.control_file_record_keep_time=30
+*.control_files='/u01/app/oracle/oradata/NPEGAPRD/control01.ctl','/u01/app/oracle/fast_recovery_area/NPEGAPRD/control02.ctl'#Restore Controlfile
+*.core_dump_dest='/u01/app/oracle/admin/NPEGAPRD/cdump'
+*.db_block_size=8192
+*.db_create_file_dest='/u01/app/oracle/oradata/NPEGAPRD'
+*.db_create_online_log_dest_1='/pegahome/fast_recovery_area'
+*.db_create_online_log_dest_2='/u01/app/oracle/oradata/NPEGAPRD'
+*.db_files=1500
+*.db_flashback_retention_target=2800
+*.db_name='PEGAPRD'
+*.db_recovery_file_dest='/pegahome/fast_recovery_area'
+*.db_recovery_file_dest_size=10737418240
+*.db_unique_name='NPEGAPRD'
+*.diagnostic_dest='/u01/app/oracle'
+*.dispatchers='(PROTOCOL=TCP) (SERVICE=PEGAPRDXDB)'
+*.large_pool_size=536870912
+*.local_listener='(ADDRESS=(PROTOCOL=tcp)(HOST=10.10.2.180)(PORT=1521))'
+*.log_archive_dest_1='LOCATION=/pegahome/app/oracle/oradata/orcl/arch'
+*.log_archive_dest_state_2='ENABLE'
+*.log_archive_dest_state_3='ENABLE'
+*.log_archive_format='%t_%s_%r.arc'
+*.log_archive_max_processes=10
+*.nls_language='AMERICAN'
+*.nls_territory='AMERICA'
+*.open_cursors=5000
+*.pga_aggregate_limit=12884901888
+*.pga_aggregate_target=6442450944
+*.processes=3000
+*.remote_login_passwordfile='EXCLUSIVE'
+*.service_names='pegaprd','npegaprd'
+*.sessions=3000
+*.sga_max_size=128849018880
+*.sga_target=105226698752
+*.standby_file_management='AUTO'
+*.undo_retention=5380
+*.undo_tablespace='UNDOTBS1'
+
+Dr :
+PEGAPRDDR.__data_transfer_cache_size=0
+PEGAPRD.__data_transfer_cache_size=0
+PEGAPRDDR.__db_cache_size=22548578304
+PEGAPRD.__db_cache_size=23353884672
+PEGAPRDDR.__inmemory_ext_roarea=0
+PEGAPRD.__inmemory_ext_roarea=0
+PEGAPRDDR.__inmemory_ext_rwarea=0
+PEGAPRD.__inmemory_ext_rwarea=0
+PEGAPRDDR.__java_pool_size=268435456
+PEGAPRD.__java_pool_size=0
+PEGAPRDDR.__large_pool_size=536870912
+PEGAPRD.__large_pool_size=536870912
+PEGAPRD.__oracle_base='/u01/app/oracle'#ORACLE_BASE set from environment
+PEGAPRDDR.__oracle_base='/u01/app/oracle'#ORACLE_BASE set from environment
+PEGAPRDDR.__pga_aggregate_target=2147483648
+PEGAPRD.__pga_aggregate_target=6442450944
+PEGAPRDDR.__sga_target=26843545600
+PEGAPRD.__sga_target=26843545600
+PEGAPRDDR.__shared_io_pool_size=536870912
+PEGAPRD.__shared_io_pool_size=0
+PEGAPRDDR.__shared_pool_size=2885681152
+PEGAPRD.__shared_pool_size=2885681152
+PEGAPRDDR.__streams_pool_size=0
+PEGAPRD.__streams_pool_size=0
+PEGAPRD.__unified_pga_pool_size=0
+*.archive_lag_target=0
+*.audit_file_dest='/u01/app/oracle/admin/NPEGAPRD/adump'
+*.audit_trail='db'
+*.compatible='19.0.0'
+*.control_file_record_keep_time=30
+*.control_files='/u01/app/oracle/oradata/NPEGAPRD/control01.ctl','/u01/app/oracle/fast_recovery_area/NPEGAPRD/control02.ctl'#Restore Controlfile
+*.core_dump_dest='/u01/app/oracle/admin/NPEGAPRD/cdump'
+*.db_block_size=8192
+*.db_create_online_log_dest_1='/pegahome/fast_recovery_area'
+*.db_create_online_log_dest_2='/u01/app/oracle/oradata/NPEGAPRD'
+*.db_file_name_convert='PEGAPRDDR','PEGAPRD'
+*.db_files=1500
+*.db_flashback_retention_target=2800
+*.db_name='PEGAPRD'
+*.db_recovery_file_dest='/pegahome/fast_recovery_area'
+*.db_recovery_file_dest_size=10737418240
+*.db_unique_name='PEGAPRDDR'
+*.diagnostic_dest='/u01/app/oracle'
+*.dispatchers='(PROTOCOL=TCP) (SERVICE=PEGAPRDXDB)'
+*.fal_client='PEGAPRDDR'
+*.fal_server='PEGAPRD'
+*.large_pool_size=536870912
+*.local_listener='(ADDRESS=(PROTOCOl=TCP)(HOST=10.10.2.181)(PORT=1521))'
+*.log_archive_config='dg_config=(NPEGAPRD,PEGAPRDDR,PEGAPRDDR2)'
+*.log_archive_dest_1='location=/pegahome/app/oracle/oradata/orcl/arch valid_for=(all_logfiles,all_roles) db_unique_name=PEGAPRDDR'
+*.log_archive_dest_2='service=pegaprd valid_for=(online_logfiles,primary_role) db_unique_name=npegaprd optional lgwr async noaffirm'
+*.log_archive_dest_3='service=PEGAPRDDR2 valid_for=(online_logfiles,primary_role) db_unique_name=PEGAPRDDR2 optional lgwr async noaffirm'
+*.log_archive_dest_state_1='ENABLE'
+*.log_archive_dest_state_2='ENABLE'
+*.log_archive_dest_state_3='ENABLE'
+*.log_archive_format='%t_%s_%r.arc'
+*.log_archive_max_processes=10
+*.nls_language='AMERICAN'
+*.nls_territory='AMERICA'
+*.open_cursors=5000
+*.pga_aggregate_limit=12G
+*.pga_aggregate_target=6G
+*.processes=3000
+*.remote_login_passwordfile='EXCLUSIVE'
+*.service_names='pegaprd','pegaprddr','npegaprd'
+*.sessions=3000
+*.sga_max_size=25G
+*.sga_target=25G
+*.standby_file_management='MANUAL'
+*.undo_retention=5380
+*.undo_tablespace='UNDOTBS1'
+
+
+
+Hosts file detail 
+Prod:
+10.10.2.180      pproddbn
+10.10.2.181    pegadbha
+
+dr:
+10.10.2.181    pegadbha
+10.10.2.180   pproddbn
+
+lsnrctl file: 
+prod:
+# listener.ora Network Configuration File: /u01/app/oracle/product/19.0.0/dbhome_1/network/admin/listener.ora
+# Generated by Oracle configuration tools.
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = PEGAPRD)
+      (ORACLE_HOME = /u01/app/oracle/product/19.0.0/dbhome_1)
+      (SID_NAME = PEGAPRD)
+    )
+  )
+
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = pproddbn)(PORT = 1521))
+    )
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+ADR_BASE_LISTENER = /u01/app/oracle
+
+ADR_BASE_PEGAARC = /u01/app/oracle
+
+
+Dr:
+# listener.ora Network Configuration File: /u01/app/oracle/product/19.0.0/dbhome_1/network/admin/listener.ora
+# Generated by Oracle configuration tools.
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.0.0/dbhome_1)
+      (SID_NAME = PEGAPRD)
+    )
+  )
+
+PEGADR =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = pegadbha)(PORT = 1521))
+    )
+  )
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.181)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+Tns file for Prod
+# tnsnames.ora Network Configuration File: /u01/app/oracle/product/19.0.0/dbhome_1/network/admin/tnsnames.ora
+# Generated by Oracle configuration tools.
+
+
+PEGAPRD =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = pproddb)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = pegaprd)
+    )
+  )
+
+PEGAPRDDR =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.181)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = PEGAPRDDR)
+      (UR = A)
+    )
+  )
+
+NPEGAPRD =
+      (DESCRIPTION =
+        (ADDRESS_LIST =
+          (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+        )
+        (CONNECT_DATA =
+          (SERVICE_NAME = pegaprd)
+        )
+      )
+
+NPEGAPRD =
+     (DESCRIPTION =
+       (ADDRESS_LIST =
+         (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+       )
+       (CONNECT_DATA =
+         (SERVICE_NAME = npegaprd)
+       )
+     )
+
+Dr:
+# tnsnames.ora Network Configuration File: /u01/app/oracle/product/12.2.0/dbhome_1/network/admin/tnsnames.ora
+# Generated by Oracle configuration tools.
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.181)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+
+PEGAPRDDR =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.181)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = PEGAPRDDR)
+          (UR=A)
+    )
+  )
+
+
+PEGAPRDDR2 =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.201.77.175)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = PEGAPRDDR2)
+          (UR=A)
+    )
+  )
+
+PEGAPRD =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = PEGAPRD)
+        (UR=A)
+    )
+  )
+
+NPEGAPRD =
+      (DESCRIPTION =
+        (ADDRESS_LIST =
+          (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+        )
+        (CONNECT_DATA =
+          (SERVICE_NAME = pegaprd)
+        )
+      )
+
+NPEGAPRD =
+     (DESCRIPTION =
+       (ADDRESS_LIST =
+         (ADDRESS = (PROTOCOL = TCP)(HOST = 10.10.2.180)(PORT = 1521))
+       )
+       (CONNECT_DATA =
+         (SERVICE_NAME = npegaprd)
+       )
+     )
+
+

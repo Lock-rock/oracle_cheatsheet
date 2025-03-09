@@ -1,0 +1,317 @@
+Oracle 19c Data Guard Configuration Step by Step
+If you want to setup an Oracle 19c Data Guard then you need to have 2 servers.
+
+A physical Data Guard is the default Oracle Data Guard configuration.
+
+Provides a physically identical copy of the primary database, with on-disk database structures that are identical to the primary database on a block-for-block basis. The database schema, including indexes, are the same.
+
+A physical standby database is kept synchronized with the primary database, through Redo Apply, which recovers the redo data received from the primary database and applies the redo to the physical standby database.
+
+On server 1, you should have a database already created and on server 2, you just need the binaries with no database created.
+
+I use /etc/hosts to setup the name resolution.
+
+Here is my /etc/hosts in both servers
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.1.130 srv1.localdomain srv1
+192.168.1.131 srv2.localdomain srv2
+In this guide I will show you how to create a standby database between Barcelona and Paris.
+
+It is quite easy if you follow this step by step data guard setup.
+
+BCN is the primary database on server srv1.
+
+PARIS is the standby database on server srv2.
+
+Table of Contents
+1. Prepare the primary database
+2. Prepare the standby database
+3. Duplicate the database
+4. Perform a switchover with sqlplus
+5. Troubleshooting
+1. Prepare the primary database
+You should first enable archivelog in your database.
+
+Enable archivelog
+
+sqlplus / as sysdba
+select log_mode from v$database ;
+alter system set log_archive_dest_1 = 'LOCATION=USE_DB_RECOVERY_FILE_DEST' scope=both;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+alter system switch logfile;
+select name from v$archived_log;
+Enable force logging
+
+select force_logging from v$database;
+alter database force logging;
+select force_logging from v$database;
+Check redo log size
+
+select group#, thread#, bytes/1024/1024 mb from v$log;
+select thread#, instance from v$thread ;
+Create standby redo logs
+
+You should create the standby logfiles the same size as the result you got in the previous query, and also the same number.
+
+Since I have 3 redo logs and their size is 200m, then I create 3 standby logfiles of 200m each.
+
+alter database add standby logfile thread 1 size 200m;
+alter database add standby logfile thread 1 size 200m;
+alter database add standby logfile thread 1 size 200m;
+Check the standby redo logs
+
+select group#, thread#, sequence#, bytes/1024/1024 mb, archived, status 
+from v$standby_log;
+ 
+select member from v$logfile where type = 'STANDBY';
+Check db_unique_name
+
+show parameter db_unique_name
+Set log_archive_config
+
+alter system set log_archive_config='DG_CONFIG=(BCN,PARIS)' scope=both;
+Set log_archive_dest_2
+
+alter system set log_archive_dest_2='SERVICE=PARIS ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=PARIS' scope=both;
+Set fal_server
+
+show parameter fal_server ;
+alter system set fal_server ='PARIS' scope=both;
+fal_client is not needed anymore in Oracle 19c.
+
+Set standby_file_management
+
+show parameter standby_file_management
+alter system set standby_file_management='AUTO' scope=both;
+Get a list of directory-dependent parameters and create the directories needed in the standby server:
+
+select name, value from v$parameter 
+where upper(value) like upper('%/bcn/%');
+You will create the adump directory later on.
+
+Enable flashback
+
+alter database flashback on;
+Check the password file.
+
+ls /u01/app/oracle/product/19.0.0/db_1/dbs/orapw*
+Add to tnsnames.ora
+
+vi $TNS_ADMIN/tnsnames.ora
+ 
+BCN =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = srv1.localdomain)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = BCN.localdomain)
+    )
+  )
+ 
+LISTENER_BCN =
+  (ADDRESS = (PROTOCOL = TCP)(HOST = srv1.localdomain)(PORT = 1521))
+ 
+PARIS =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = srv2.localdomain)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = PARIS.localdomain)
+    )
+  )
+
+On the primary server, add a static listener registration
+vi $TNS_ADMIN/listener.ora
+  
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv1.localdomain)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+  
+SID_LIST_LISTENER=
+   (SID_LIST=
+        (SID_DESC=
+          (GLOBAL_DBNAME=BCN.localdomain)
+          (SID_NAME=BCN)
+          (ORACLE_HOME=/u01/app/oracle/product/19.0.0/db_1)
+        )
+      )
+
+Reload the listener
+
+lsnrctl reload
+2. Prepare the standby database
+Create an init file with just the db_name.
+
+Remember, the db_name will be the same in both the primary and the standby database.
+
+Only the db_unique_name will be different.
+echo 'DB_NAME=BCN' > $ORACLE_HOME/dbs/initPARIS.ora
+Copy the password file from the primary server to the standby server.
+
+scp oracle@srv1:/u01/app/oracle/product/19.0.0/db_1/dbs/orapwBCN /u01/app/oracle/product/19.0.0/db_1/dbs/orapwPARIS
+ 
+ls -al /u01/app/oracle/product/19.0.0/db_1/dbs/orapwPARIS
+Copy the tnsnames.ora file
+scp oracle@srv1:/u01/app/oracle/product/19.0.0/db_1/network/admin/tnsnames.ora /u01/app/oracle/product/19.0.0/db_1/network/admin/tnsnames.ora
+
+On the standby server, add a static listener registration which will be needed to duplicate a database
+vi $TNS_ADMIN/listener.ora
+ 
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = srv2.localdomain)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = IPC)(KEY = EXTPROC1521))
+    )
+  )
+ 
+SID_LIST_LISTENER=
+   (SID_LIST=
+        (SID_DESC=
+          (GLOBAL_DBNAME=PARIS.localdomain)
+          (SID_NAME=PARIS)
+          (ORACLE_HOME=/u01/app/oracle/product/19.0.0/db_1)
+        )
+      )
+
+Reload the listener
+
+lsnrctl reload
+Create the adump folder
+
+mkdir -p /u01/app/oracle/admin/PARIS/adump
+
+Start the standby BD in nomount
+sqlplus / as sysdba
+startup nomount
+exit
+3. Duplicate the database
+Connect to RMAN
+
+You should connect to the primary database and to the standby at the same time.
+
+rman TARGET sys/oracle@BCN AUXILIARY sys/oracle@PARIS
+Duplicate the database
+DUPLICATE TARGET DATABASE FOR STANDBY FROM ACTIVE DATABASE DORECOVER
+SPFILE
+SET DB_UNIQUE_NAME 'PARIS' COMMENT 'Is standby'
+SET LOG_ARCHIVE_DEST_2 'SERVICE=BCN ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=BCN'
+SET AUDIT_FILE_DEST '/u01/app/oracle/admin/PARIS/adump'
+SET CONTROL_FILES '/u01/app/oracle/oradata/PARIS/controlfile/control01.ctl'
+SET FAL_SERVER 'BCN'
+NOFILENAMECHECK;
+Once the duplicate command is done, you have already created your standby database.
+
+Now connect to the standby database and verify its role.
+sqlplus / as sysdba
+select database_role from v$database;
+show parameter db_name
+show parameter db_unique_name
+The db_name should be the same as the primary database and the db_unique_name should be PARIS.
+
+Now start the redo apply process on the standby database.
+
+alter database recover managed standby database
+disconnect from session;
+Check on the standby database that it is applying archivers with this.
+
+select role, thread#, sequence#, action
+from v$dataguard_process;
+Now go to the primary and check the archivers too and do a switch logfile to generate a new archiver
+
+select sequence#, first_time, next_time 
+from v$archived_log
+order by sequence#;
+ 
+alter system switch logfile;
+Now go to the standby database and check that the new archiver has been applied.
+
+select sequence#, first_time, next_time, applied 
+from v$archived_log
+order by sequence#;
+Stop the recovery process on the standby
+
+alter database recover managed standby database cancel;
+Enable flashback on the standby
+
+alter database flashback on;
+Start the recovery process again on the standby
+
+alter database recover managed standby database
+disconnect from session;
+4. Perform a switchover with sqlplus
+Fist confirm that the synchronization is ready to perform a switchover
+
+sqlplus / as sysdba
+alter database switchover to PARIS verify;
+If you don’t get any error in the previous command then all is good.
+
+If you do get errors, then check the alert file for more details.
+
+On the primary database check that there are no gaps
+
+select status, gap_status 
+from v$archive_dest_status 
+where dest_id = 2;
+Switchover to standby database
+
+Execute from the primary database:
+
+alter database switchover to PARIS;
+Now go to srv2 (which is now the primary database) and open the database
+
+sqlplus / as sysdba
+alter database open;
+Now go to srv1 (the new standby database) and mount the database
+
+startup mount
+alter database recover managed standby database disconnect;
+On srv1 verify that everything is ok
+
+select database_role from v$database;
+ 
+select role, thread#, sequence#, action from v$dataguard_process;
+Now let’s move everything back to the starting point.
+
+You’ll perform a switchback.
+
+First verify that both databases are ready.
+
+alter database switchover to BCN verify;
+Now go to srv2 and execute the switchover again.
+
+alter database switchover to BCN;
+And open the database on srv1
+
+alter database open;
+On srv2 mount the database and start the recovery process again
+
+startup mount
+alter database recover managed standby database disconnect;
+On srv2 verify the switchback was correct
+
+select database_role from v$database;
+5. Troubleshooting
+If you run into problems, check the parameters on the primary and the standby database with this query.
+
+set linesize 200 pages 50
+col value for a85
+col name for a50
+ 
+select name, value 
+from gv$parameter
+where name in ('db_name','db_unique_name','log_archive_config',    
+'log_archive_dest_1','log_archive_dest_2','log_archive_dest_3',
+'log_archive_dest_state_1','log_archive_dest_state_2','log_archive_dest_state_3', 
+'remote_login_passwordfile','log_archive_format','log_archive_max_processes',
+'fal_server','fal_client','db_file_name_convert',
+'log_file_name_convert', 'standby_file_management') 
+order by 1;

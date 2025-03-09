@@ -1,0 +1,117 @@
+Oracle 19c Pre-requisites
+
+Use the YUM repository to perform all the pre-install steps. Make sure your VM is able to ping google.com before executing below command
+
+yum install -y oracle-database-preinstall-19c
+Set password for Oracle user
+
+passwd oracle
+Create Oracle home directory and give ownership to Oracle user
+
+mkdir -p /u01/app/oracle/product/19.3/db_home
+chown -R oracle:oinstall /u01
+chmod -R 775 /u01
+Setup Oracle user bash_profile
+
+su - oracle
+vi .bash_profile
+Delete all and paste below. Make sure to change environment variables according to your environment
+
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+export ORACLE_SID=CDB
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=/u01/app/oracle/product/19.3/db_home
+
+PATH=$PATH:$HOME/.local/bin:$ORACLE_HOME/bin
+
+export PATH
+Export bash profile
+
+. .bash_profile
+
+
+Install Oracle 19c Software
+
+Download Oracle 19c and copy the 19c software file to ORACLE_HOME location and unzip. Start the run installer to perform installation
+
+cd $ORACLE_HOME
+
+unzip -qo /softwares/LINUX.X64_193000_db_home.zip
+
+#for GUI installation
+./runInstaller
+
+#for silent installation
+./runInstaller -ignorePrereq -waitforcompletion -silent      \
+-responseFile ${ORACLE_HOME}/install/response/db_install.rsp \
+oracle.install.option=INSTALL_DB_SWONLY                      \
+ORACLE_HOSTNAME=${HOSTNAME}                                  \
+UNIX_GROUP_NAME=oinstall                                     \
+INVENTORY_LOCATION=/u01/app/oraInventory                     \
+SELECTED_LANGUAGES=en,en_GB                                  \
+ORACLE_HOME=${ORACLE_HOME}                                   \
+ORACLE_BASE=${ORACLE_BASE}                                   \
+oracle.install.db.InstallEdition=EE                          \
+oracle.install.db.OSDBA_GROUP=dba                            \
+oracle.install.db.OSBACKUPDBA_GROUP=dba                      \
+oracle.install.db.OSDGDBA_GROUP=dba                          \
+oracle.install.db.OSKMDBA_GROUP=dba                          \
+oracle.install.db.OSRACDBA_GROUP=dba                         \
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=false                   \
+DECLINE_SECURITY_UPDATES=true
+
+
+DBCA Create 19c Container Database
+
+To create 19c container database along with multiple PDBs, use below
+
+dbca -silent -createDatabase                            \
+     -templateName General_Purpose.dbc                  \
+     -gdbname ${ORACLE_SID} -sid  ${ORACLE_SID}         \
+     -characterSet AL32UTF8                             \
+     -sysPassword enterCDB#123                          \
+     -systemPassword enterCDB#123                       \
+     -createAsContainerDatabase true                    \
+     -totalMemory 2000                                  \
+     -storageType FS                                    \
+     -datafileDestination /u01/${ORACLE_SID}            \
+     -emConfiguration NONE                              \
+     -numberOfPDBs 2                                    \
+     -pdbName PDB                                       \
+     -pdbAdminPassword enterPDB#123                     \
+     -ignorePreReqs
+Check all the containers inside the database
+
+sqlplus / as sysdba
+
+SELECT  NAME, OPEN_MODE, CDB FROM V$DATABASE;
+SELECT CON_ID, NAME, OPEN_MODE FROM V$CONTAINERS;
+
+
+DBCA Create 19c Database (non-cdb)
+
+Oracle has stopped supporting non-cdb architecture but you can still create a non-cdb database
+
+export ORACLE_SID=orcl
+     
+#for silent database creation
+dbca -silent -createDatabase                            \
+     -templateName General_Purpose.dbc                  \
+     -gdbname ${ORACLE_SID} -sid  ${ORACLE_SID}         \
+     -characterSet AL32UTF8                             \
+     -sysPassword enterDB#123                           \
+     -systemPassword enterDB#123                        \
+     -createAsContainerDatabase false                   \
+     -totalMemory 2000                                  \
+     -storageType FS                                    \
+     -datafileDestination /u01/${ORACLE_SID}            \
+     -emConfiguration NONE                              \
+     -ignorePreReqs -sampleSchema true

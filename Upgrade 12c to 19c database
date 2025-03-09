@@ -1,0 +1,56 @@
+****** Note: please update pfile befor start*****************
+FIRST SET ENVIROMENT:
+
+export ORACLE_SID=PEGAPRD
+export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1
+export PATH=${PATH}:${ORACLE_HOME}/bin
+
+
+CONNECT SQL:
+SQLPLUS / AS SYSDBA
+
+startup nomount pfile='/u01/app/oracle/product/19.0.0/dbhome_1/dbs/initPEGAPRD.ora';
+
+CREATE SPFILE FROM PFILE;
+
+SHUTDOWN IMMEDIATE;
+
+STARTUP NOMOUNT;
+
+RMAN TARGET /
+
+restore controlfile from '/pbackup/ctl/LEVEL_0_PEGAPRD_20230922_46582_1_fm270b7e.ctl';
+
+
+ALTER DATABASE MOUNT;
+
+catalog start with '/pbackup/RMAN/full';
+
+PRESS "YES"
+
+report schema;
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 40;
+
+recover database;
+
+alter database open resetlogs;-----NOT REQUIRED
+
+startup upgrade;
+
+
+$ORACLE_HOME/perl/bin/perl catctl.pl catupgrd.sql
+
+
+startup;
+
+set lines 200 pages 200
+col comp_name for a40
+select comp_name, status from dba_registry;
+
+
+
+@$ORACLE_HOME/rdbms/admin/utlrp.sql
+
+
+select comp_name, status from dba_registry;

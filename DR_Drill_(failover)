@@ -1,0 +1,17 @@
+DO IT DR.
+
+ON STANDBY :
+
+db2 deactivate db DOCM;
+
+db2 stop hadr on db DOCM;
+
+db2 rollforward database DOCM to end of logs and complete;
+
+db2 connect to  docm;
+
+db2top;
+
+db2 force application all;
+
+db2stop;
