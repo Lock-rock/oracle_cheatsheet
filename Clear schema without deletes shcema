@@ -1,0 +1,8 @@
+To drop all tables in a schema without dropping schema in oracle
+
+BEGIN
+  FOR t IN (SELECT table_name FROM all_tables WHERE owner = 'TAB_TEST') LOOP
+    EXECUTE IMMEDIATE 'DROP TABLE TAB_TEST.' || t.table_name;
+  END LOOP;
+END;
+/
