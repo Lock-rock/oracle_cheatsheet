@@ -1,0 +1,5 @@
+rman target /
+list archivelog all;
+crosscheck archivelog all;
+delete noprompt archivelog until time 'SYSDATE-10';
+delete force expired archivelog all;
