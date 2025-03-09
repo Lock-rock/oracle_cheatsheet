@@ -1,0 +1,345 @@
+Script to find the sid of the session you are logged in as
+select distinct(sid) from v$mystat;
+
+Script to see all active session
+select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
+and status ='ACTIVE' and module is not null;
+
+Script to see waiters
+set linesize 1000
+column waiting_session heading ‘WAITING|SESSION’
+column holding_session heading ‘HOLDING|SESSION’
+column lock_type format a15
+column mode_held format a15
+column mode_requested format a15select
+waiting_session,
+holding_session,
+lock_type,
+mode_held,
+mode_requested,
+lock_id1,
+lock_id2
+from
+dba_waiters
+/
+
+Script to how active transaction in the database
+col RBS format a15 trunc
+col SID format 9999
+col USER format a15 trunc
+col COMMAND format a60 trunc
+col status format a8 trunc
+select r.name "RBS", s.sid, s.serial#, s.username "USER", t.status,
+t.cr_get, t.phy_io, t.used_ublk, t.noundo,
+substr(s.program, 1, 78) "COMMAND"
+from v$session s, v$transaction t, v$rollname r
+where t.addr = s.taddr
+and t.xidusn = r.usn
+order by t.cr_get, t.phy_io
+/
+
+Script to monitor the long running queries
+set linesize 1000
+select
+OPNAME,
+sid,SOFAR/TOTALWORK*100,
+to_char(start_time,'dd-mon-yy hh:mi') started,
+elapsed_seconds/60,time_remaining/60
+from
+v$session_longops
+where
+sid =&sid
+
+Script to see all lock objects
+set term on;
+set lines 130;
+column sid_ser format a12 heading 'session,|serial#';
+column username format a12 heading 'os user/|db user';
+column process format a9 heading 'os|process';
+column spid format a7 heading 'trace|number';
+column owner_object format a35 heading 'owner.object';
+column locked_mode format a13 heading 'locked|mode';
+column status format a8 heading 'status';
+select
+substr(to_char(l.session_id)||','||to_char(s.serial#),1,12) sid_ser,
+substr(l.os_user_name||'/'||l.oracle_username,1,12) username,
+l.process,
+p.spid,
+substr(o.owner||'.'||o.object_name,1,35) owner_object,
+decode(l.locked_mode,
+1,'No Lock',
+2,'Row Share',
+3,'Row Exclusive',
+4,'Share',
+5,'Share Row Excl',
+6,'Exclusive',null) locked_mode,
+substr(s.status,1,8) status
+from
+v$locked_object l,
+all_objects o,
+v$session s,
+v$process p
+where
+l.object_id = o.object_id
+and l.session_id = s.sid
+and s.paddr = p.addr
+and s.status != 'KILLED'
+/
+
+
+Script to see waits events
+set linesize 1000
+column sid format 999
+column username format a15 wrapped
+column spid format a8
+column event format a30 wrapped
+column osuser format a12 wrapped
+column machine format a25 wrapped
+column program format a30 wrapped
+select sw.sid sid
+, p.spid spid
+, s.username username
+, s.osuser osuser
+, sw.event event
+, s.machine machine
+, s.program program
+from v$session_wait sw
+, v$session s
+, v$process p
+where s.paddr = p.addr
+and event not in ('pipe get','client message')
+and sw.sid = s.sid
+/
+
+
+Script to see particular session waits
+select sid,seq#,wait_time,event,seconds_in_wait,state from v$session_wait where sid in (&sid);
+
+Script to see all user accessing that objects
+column object format a30
+column owner format a10
+select * from v$access where object='&object_name'
+/
+
+Script gives information about the user sessions locking a particular object
+set linesize 1000
+column program format a15
+column object format a15
+select substr(username||'('|| se0.sid||')',1,5) "User Session",
+substr(owner,1,5) "Object Owner",
+substr(object,1,15) "Object",
+se0.sid,
+substr(serial#,1,6) "Serial#",
+substr(program,1,15) "Program",
+logon_time "Logon Time",
+process "Unix Process"
+from v$access ac, v$session se0
+where ac.sid = se0.sid
+and Object = '&PACKAGE'
+order by logon_time,"Object Owner","Object"
+/
+
+Script to see the explain plan in Oracle for the statement in the library cache
+set linesize 9999
+column QUERY format a999
+set pages 250
+set head off
+set verify off
+select id,lpad(' ',2*(depth-1)) || depth ||'.' || nvl(position,0) || ' '|| operation || ' '|| options || ' '|| object_name ||' '
+||'cost= '|| to_char(cost)||' '|| optimizer "QUERY"
+from v$sql_plan
+where hash_value = &sql_hash_value
+order by child_number,id
+/
+
+Script to find server location
+select nvl(username,'ORACLE SHADOW PROCESS'),
+machine from
+v$session where username is null
+and rownum < 2
+/
+
+Script to see the top sort segment usage
+col sid format 999999
+col spid format a6
+col tablespace format a10
+col username format a25
+col noexts format 9999 head EXTS
+col proginfo format a25 trunc
+col mbused format 999,999.90
+col status format a1 trunc
+set verify off
+select * from (
+select s.sid,
+s.status,
+b.spid,
+s.sql_hash_value sesshash,
+u.SQLHASH sorthash,
+s.username,
+u.tablespace,
+sum(u.blocks*p.value/1024/1024) mbused ,
+sum(u.extents) noexts,
+u.segtype,
+s.module || ' - ' || s.program proginfo
+from v$sort_usage u, v$session s, v$parameter p, v$process b
+where u.session_addr = s.saddr
+and p.name = 'db_block_size'
+and b.addr = s.paddr
+group by s.sid,s.status,b.spid,s.sql_hash_value,u.sqlhash,s.username,u.tablespace,
+u.segtype,
+s.module || ' - ' || s.program
+order by 8 desc,4)
+where rownum < 11;
+
+Script to check the last analyzed for the tables in sql statement
+set lin 1000
+set verify off
+col owner format a15
+col object_name format a25
+col object_type format a12
+col "LAST ANALYZED" format a13 
+select do.OWNER,do.OBJECT_NAME,OBJECT_TYPE,
+decode (OBJECT_TYPE,'TABLE'  , (Select LAST_ANALYZED from dba_tables where owner=do.owner and TABLE_NAME=do.object_name)  ,'INDEX'  , (Select LAST_ANALYZED from dba_indexes where owner=do.owner and INDEX_NAME=do.object_name) ,'UNKNOWN') "LAST ANALYZED",STATUS
+from   DBA_OBJECTS do
+where  OBJECT_TYPE in ('TABLE','INDEX')
+and    (OWNER,OBJECT_NAME) in (select OBJECT_OWNER,OBJECT_NAME from V$SQL_PLAN where HASH_VALUE=&1)
+/
+
+To check Library Cache locks and pin
+select /*+ all_rows */ w1.sid waiting_session,
+h1.sid holding_session,
+w.kgllktype lock_or_pin,
+w.kgllkhdl address,
+decode(h.kgllkmod, 0, 'None', 1, 'Null', 2, 'Share', 3, 'Exclusive',
+'Unknown') mode_held,
+decode(w.kgllkreq, 0, 'None', 1, 'Null', 2, 'Share', 3, 'Exclusive',
+'Unknown') mode_requested
+from dba_kgllock w, dba_kgllock h, v$session w1, v$session h1
+where
+(((h.kgllkmod != 0) and (h.kgllkmod != 1)
+and ((h.kgllkreq = 0) or (h.kgllkreq = 1)))
+and
+(((w.kgllkmod = 0) or (w.kgllkmod= 1))
+and ((w.kgllkreq != 0) and (w.kgllkreq != 1))))
+and w.kgllktype = h.kgllktype
+and w.kgllkhdl = h.kgllkhdl
+and w.kgllkuse = w1.saddr
+and h.kgllkuse = h1.saddr
+/
+
+To check Control File location
+col name  format a60 heading "Control Files"
+select name
+from   sys.v_$controlfile
+/
+
+To check redo log locatio
+col Grp format 9999
+col member format a50 heading "Online REDO Logs"
+col File# format 9999
+col name format a50 heading "Online REDO Logs"
+break on Grp
+select group#,member
+from sys.v_$logfile
+/
+
+To check datafile location
+col Tspace format a25
+col status format a3 heading Sta
+col Id format 9999
+col Mbyte format 999999999
+col name format a50 heading "Database Data Files"
+col Reads format 99,999,999
+col Writes format 99,999,999
+break on report
+compute sum label 'Total(MB)' of Mbyte on report
+select F.file_id Id,
+F.file_name name,
+F.bytes/(1024*1024) Mbyte,
+decode(F.status,'AVAILABLE','OK',F.status) status,
+F.tablespace_name Tspace
+from sys.dba_data_files F
+order by tablespace_name;
+
+Checking autoextend on/off for Tablespaces:
+select substr(file_name,1,50), AUTOEXTENSIBLE from dba_data_files
+(OR)
+SQL> select tablespace_name,AUTOEXTENSIBLE from dba_data_files;
+
+How to check Underscore parameters
+SELECT X.KSPPINM NAME, DECODE(BITAND(KSPPIFLG/256, 1), 1, 'TRUE', 'FALSE') SESMOD,
+DECODE( BITAND(KSPPIFLG/65536, 3), 1, 'IMMEDIATE', 2, 'DEFERRED', 3, 'IMMEDIATE', 'FALSE' ) SYSMOD,
+KSPPDESC DESCRIPTION
+FROM SYS.X_$KSPPI X WHERE X.INST_ID = USERENV('INSTANCE') AND
+TRANSLATE(KSPPINM,'_','#') LIKE '#%' ORDER BY 1 ;
+
+How to show DBA links
+set linesize 128 pages 1000
+col owner format a15
+col db_link format a15
+col username format a20
+col host format a15
+col name format a30
+
+Prompt Database Links:
+select owner, db_link, username, host from dba_db_links order by owner,db_link,username
+/
+
+Prompt Synonym Links:
+select distinct owner, db_link from dba_synonyms where db_link is not null
+/
+
+Prompt Snapshot Links:
+select owner, name, replace(master_link,'@','') db_link from dba_snapshots
+where master_link is not null
+/
+
+Identifying the segment by DBA_extents using file-id and block
+SELECT segment_name, segment_type
+FROM dba_extents
+WHERE file_id = < file> AND
+<block> BETWEEN block_id and block_id + blocks - 1;
+Listing jobs running from DBMS_SCHEDULER
+SET HEADING ON
+SET LINESIZE 300
+SET PAGESIZE 60COLUMN owner FORMAT A20
+SELECT owner,
+job_name,
+running_instance,
+elapsed_time
+FROM dba_scheduler_running_jobs
+ORDER BY owner, job_name
+/
+
+Listing DBMS_SCHEDULER JOB information
+SET HEADING ON
+SET LINESIZE 300
+SET PAGESIZE 60
+COLUMN owner FORMAT A20
+COLUMN next_run_date FORMAT A35
+SELECT owner,
+job_name,
+enabled,
+job_class,
+next_run_date
+FROM dba_scheduler_jobs
+ORDER BY owner, job_name
+/
+
+How to get Historical plan for the SQL_ID from AWR
+SET PAGESIZE 60
+SET LINESIZE 300
+SELECT * FROM TABLE(dbms_xplan.display_awr('&SQL_ID'))
+/
+
+How to do wait analysis of the database
+select event, state, count(*) from v$session_wait group by event, state order by 3 desc;
+
+How to find High Buffer gets sql 
+select * from (SELECT address, hash_value,
+buffer_gets, executions, buffer_gets/executions "Gets/Exec",
+sql_text
+FROM v$sqlarea
+WHERE buffer_gets > 500000 and executions>0
+ORDER BY 3 desc) where rownum <20
+;
