@@ -1,0 +1,1 @@
+Select 'GRANT SELECT ON HR.'||Table_Name||' TO SCOTT;' From All_Tables Where Owner='HR'
