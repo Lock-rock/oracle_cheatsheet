@@ -1,0 +1,6 @@
+col DIRECTORY_NAME for a30;
+col DIRECTORY_PATH for a100;
+set lines 200 pages 200;
+SELECT owner, directory_name, directory_path FROM all_directories;
+
+CREATE OR REPLACE DIRECTORY EXPORT AS '/backup/expimp';
