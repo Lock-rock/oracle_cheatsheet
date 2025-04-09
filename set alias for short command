@@ -1,0 +1,3 @@
+Set alias permant in oracle:
+
+echo "alias d='df -gt'" >> ~/.profile
