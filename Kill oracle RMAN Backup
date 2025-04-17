@@ -1,0 +1,28 @@
+Running Backup kill in oracle:-
+
+SELECT SID, SERIAL#, CONTEXT, SOFAR, TOTALWORK,
+ROUND (SOFAR/TOTALWORK*100, 2) "% COMPLETE"
+FROM V$SESSION_LONGOPS
+WHERE OPNAME LIKE 'RMAN%' AND OPNAME NOT LIKE '%aggregate%'
+AND TOTALWORK! = 0 AND SOFAR <> TOTALWORK;
+
+
+       SID    SERIAL#    CONTEXT      SOFAR  TOTALWORK % COMPLETE
+---------- ---------- ---------- ---------- ---------- ----------
+       770      38273          1   24368172   59113334      41.22
+       349      58983          1   30996904   58318452      53.15
+       249      59012          1   19249390   58457974      32.93
+        84      26430          1   35632616   58458100      60.95
+       570      11280          1   35713386   59113334      60.42
+       481      37016          1   31558700   57933686      54.47
+       417       7027          1   26101740   57946486      45.04
+        14      19721          1   30535146   58458102      52.23
+
+alter system kill session '14,19721' immediate;
+alter system kill session '770,38273' immediate;
+alter system kill session '349,58983' immediate;
+alter system kill session '249,59012' immediate;
+alter system kill session '84,11280' immediate;
+alter system kill session '570,19721' immediate;
+alter system kill session '481,37016' immediate;
+alter system kill session '417,7027' immediate;
