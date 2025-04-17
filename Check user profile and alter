@@ -1,0 +1,10 @@
+set lines 100
+set pages 100
+col RESOURCE_NAME for a20
+col LIMIT for a70
+
+select resource_name,limit from dba_profiles where profile='DEFAULT';
+alter profile DEFAULT limit password_life_time UNLIMITED;
+
+------logs------------
+SQL> select resource_name,limit from dba_profiles where profile='DEFAULT';
