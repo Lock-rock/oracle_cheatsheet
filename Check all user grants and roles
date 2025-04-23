@@ -18,8 +18,14 @@ WHERE grantee = 'ITGI_RI';
 Grant for schema on user:
 SELECT 'GRANT select, insert, update, delete ON '||OWNER||'.'||table_name||' TO NAIDU;' FROM dba_all_tables where owner='PEGADATA';
 
-
-
+Grant by script execution in oracle:
+BEGIN
+    FOR rec IN (SELECT table_name FROM all_tables WHERE owner = 'YOUR_SCHEMA_NAME') LOOP
+        EXECUTE IMMEDIATE 'GRANT SELECT ON ' || rec.table_name || ' TO john_doe';
+    END LOOP;
+END;
+/
+==================================================================================================================================================================================================
 Query to find all privileges for all users in Database:
 COL USERNAME FOR A15
 COL PRIVILEGE FOR A25
