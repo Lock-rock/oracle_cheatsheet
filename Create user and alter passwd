@@ -1,21 +1,26 @@
 CREATE A USER:
 
 create user UPGRADERO identified by UPGRADERO#123;
-
 GRANT CREATE SESSION TO username;
+GRANT UNLIMITED TABLSPACE TO username;
 GRANT SELECT, UPDATE, INSERT ON schema.table TO username;
 ALTER USER username QUOTA UNLIMITED ON tablespace_name;
+
+Drop user:
 DROP USER username CASCADE;
+
+lock 
 alter user JOHN account lock;
 ALTER DEFAUTL PASSWD:
 
 select NAME,SPARE4 from user$ where NAME = 'POSDEV';
 
-output 
+output:
+
 NAME
---------------------------------------------------------------------------------
+---------------
 SPARE4
---------------------------------------------------------------------------------
+---------------
 POSDEV
 S:3A75A83D83966C1668D8440389F62FF390FAB9DC2EA0DEBCD0ED86FF2ECC;T:0D54A7B25CCA270
 53005CE88A609497F7858A2827EB01FDF93451F6E00BAA4ED70BDA2D7F0FC8C61BA18EF28B3488D9
