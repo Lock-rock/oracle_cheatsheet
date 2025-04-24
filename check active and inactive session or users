@@ -580,3 +580,46 @@ p.addr=s.paddr AND
 s.machine like (‘%&CLIENT_MACHINE%’) AND
 s.status=’INACTIVE’
 group by s.program;
+###########################################################################################################################
+Check maximum number of user PROCESSES:
+
+SET LINES 300
+SET PAGES 999
+COL RESOURCE_NAME FOR A15
+COL CURRENT FOR 999999
+COL MAX FOR 99999
+COL LIMIT FOR 99999
+
+SELECT RESOURCE_NAME,
+       CURRENT_UTILIZATION "CURRENT",
+       MAX_UTILIZATION "MAX_REACHED", 
+       LIMIT_VALUE "LIMIT",
+       ROUND(CURRENT_UTILIZATION/LIMIT_VALUE*100,1) PCT_USED
+FROM 
+       V$RESOURCE_LIMIT
+WHERE
+       RESOURCE_NAME IN ( 'sessions', 'processes');
+
+Processes Utilization per User:
+
+SET PAGES 999
+SET LINES 200
+COL USERNAME FOR A30
+COL PCT FOR 990D0
+
+WITH PROCESSES AS (
+SELECT NVL(S.USERNAME,'BACKGROUND') USERNAME,
+       COUNT(NVL(S.USERNAME,'BACKGROUND')) PROCESSES#
+FROM
+       V$SESSION S,
+       V$PROCESS P
+WHERE
+       S.PADDR=P.ADDR
+GROUP BY
+       NVL(S.USERNAME,'BACKGROUND'))
+SELECT USERNAME,
+       PROCESSES#,
+       ROUND((PROCESSES#/SUM(PROCESSES#) OVER ())*100,1) PCT
+FROM
+       PROCESSES
+ORDER BY 2;
