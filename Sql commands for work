@@ -1,0 +1,8 @@
+Delete data from spacifice columns or not columns:
+
+DELETE FROM MISRPA.POLICY_IIB WHERE "MONTH" NOT IN ('MARCH_4', 'MARCH_5');
+
+inset data in one column to another column in same table or another table:
+
+UPDATE table name SET new_columne = old_columne;	
+
