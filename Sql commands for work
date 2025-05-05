@@ -1,8 +1,22 @@
 Delete data from spacifice columns or not columns:
-
 DELETE FROM MISRPA.POLICY_IIB WHERE "MONTH" NOT IN ('MARCH_4', 'MARCH_5');
 
 inset data in one column to another column in same table or another table:
-
 UPDATE table name SET new_columne = old_columne;	
+
+For column add and modification:
+ALTER TABLE table_name ADD column_name datatype --add column
+ALTER TABLE table_name DROP COLUMN column_name --delete column
+ALTER TABLE table_name ALTER COLUMN column_name datatype --SQL Server
+ALTER TABLE table_name MODIFY COLUMN column_name datatype --MySQL
+ALTER TABLE table_name MODIFY column_name datatype --Oracle 10G+
+
+Rename table:
+RENAME old_table_name TO new_table_name;
+
+Create table from another table:
+CREATE TABLE new_table AS SELECT * FROM existing_table WHERE 1=0;  ---without data
+
+
+
 
