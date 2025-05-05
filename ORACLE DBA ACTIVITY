@@ -1,0 +1,387 @@
+ORACLE DBA – ACTIVITY CHECKLISTon DAILY/WEEKLY/MONTHLY/NIGHTLY
+Aim:
+This activity checklist is for Oracle DBA to perform the complete health check report of production databases on Daily/Weekly/Monthly basis as per the requirement.
+
+DAILY CHECKLIST
+Oracle Database instance is running or not
+select name,open_mode from V$database;
+
+Note: Check the Oracle databases are running or not, in case if it is not running then startup DB
+Database Listener is running or not.
+lsnrctl status 
+
+Note:  Run listener status on OS terminal & verify database listener is running or not, if it is not running then start the listener also if you have multiple listener configure verify & start the entire listener.
+Check any session blocking the other session
+select * from V$lock;
+
+Note: Run block_session.sql to verify is there any session blocking another session if yes then kills the session by using the alter system kill session ‘,<serial#>'
+Check the alert log for any database error
+Go to the default alert log location & verify <alert_.log> file
+
+Note: If you find any error related to Oracle database then resolve it ASAP
+Check is there any dbms jobs run & check the status of the same
+select * from dba_jobs;
+
+ Note: Verify all the dbms job running successfully & failed jobs, if any of the job fail then follow dbms_job_troubleshooting document.
+Check the Top session using more Physical I/O
+Select sid, username,round(100 * total_user_io/total_io,2) tot_io_pct from (select b.sid sid, nvl(b.username,p.name) username, sum(value) total_user_io from sys.v_$statname c,sys.v_$sesstat a,sys.v_$session b,sys.v_$bgprocess p where a.statistic#=c.statistic# and p.paddr (+) = b.paddr and b.sid=a.sid and c.name in ('physical reads','physical writes','physical writes direct','physical reads direct','physical writes direct (lob)','physical reads direct (lob)') group by b.sid, nvl(b.username,p.name)),(select sum(value) total_io from sys.v_$statname c, sys.v_$sesstat a where a.statistic#=c.statistic# and c.name in ('physical reads', 'physical writes','physical writes direct','physical reads direct','physical writes direct (lob)','physical reads direct (lob)')) order by 3 desc;
+
+Note: Verify the session using most Physical I/O.
+Check the number of log switch per hour in database
+select substr(first_time,1,5) day,
+to_char(sum(decode(substr(first_time,10,2),'00',1,0)),'999') "00",
+to_char(sum(decode(substr(first_time,10,2),'01',1,0)),'999') "01",
+to_char(sum(decode(substr(first_time,10,2),'02',1,0)),'999') "02",
+to_char(sum(decode(substr(first_time,10,2),'03',1,0)),'999') "03",
+to_char(sum(decode(substr(first_time,10,2),'04',1,0)),'999') "04",
+to_char(sum(decode(substr(first_time,10,2),'05',1,0)),'999') "05",
+to_char(sum(decode(substr(first_time,10,2),'06',1,0)),'999') "06",
+to_char(sum(decode(substr(first_time,10,2),'07',1,0)),'999') "07",
+to_char(sum(decode(substr(first_time,10,2),'08',1,0)),'999') "08",
+to_char(sum(decode(substr(first_time,10,2),'09',1,0)),'999') "09",
+to_char(sum(decode(substr(first_time,10,2),'10',1,0)),'999') "10",
+to_char(sum(decode(substr(first_time,10,2),'11',1,0)),'999') "11",
+to_char(sum(decode(substr(first_time,10,2),'12',1,0)),'999') "12",
+to_char(sum(decode(substr(first_time,10,2),'13',1,0)),'999') "13",
+to_char(sum(decode(substr(first_time,10,2),'14',1,0)),'999') "14",
+to_char(sum(decode(substr(first_time,10,2),'15',1,0)),'999') "15",
+to_char(sum(decode(substr(first_time,10,2),'16',1,0)),'999') "16",
+to_char(sum(decode(substr(first_time,10,2),'17',1,0)),'999') "17",
+to_char(sum(decode(substr(first_time,10,2),'18',1,0)),'999') "18",
+to_char(sum(decode(substr(first_time,10,2),'19',1,0)),'999') "19",
+to_char(sum(decode(substr(first_time,10,2),'20',1,0)),'999') "20",
+to_char(sum(decode(substr(first_time,10,2),'21',1,0)),'999') "21",
+to_char(sum(decode(substr(first_time,10,2),'22',1,0)),'999') "22",
+to_char(sum(decode(substr(first_time,10,2),'23',1,0)),'999') "23"
+from v$log_history
+group by substr(first_time,1,5)
+/
+
+Note: Verify log switch per hour. If log switch more than 5 in every hour then there is need to increase the size of Redo Log file as per your requirement.
+How Much redo generated per hour
+SELECT Start_Date, Start_Time, Num_Logs, Round(Num_Logs * (Vl.Bytes / (1024 * 1024)),2) AS Mbytes, Vdb.NAME AS Dbname FROM (SELECT To_Char(Vlh.First_Time,'YYYY-MM-DD') AS Start_Date,To_Char(Vlh.First_Time,'HH24') || ':00' AS Start_Time,COUNT(Vlh.Thread#) Num_Logs FROM V$log_History Vlh GROUP BY To_Char(Vlh.First_Time,'YYYY-MM-DD'),To_Char(Vlh.First_Time,'HH24') || ':00') Log_Hist,V$log Vl,V$database Vdb WHERE Vl.Group# = 1 ORDER BY Log_Hist.Start_Date, Log_Hist.Start_Time;
+Note: Verify the amount of redo generated per hour.
+Run the statpack report
+Note: Run the statpack twice in a day to collect database statistics & compare it with previous statistics.
+Check the SQL query consuming lot of resources
+Select A.User_Name, B.Disk_Reads, B.Buffer_Gets,B.Rows_Processed, C.SQL_Text From V$Open_Cursor A, V$SQLArea B, V$SQLText C Where A.User_Name = Upper('&&User') And A.Address = C.Address And A.Address = B.Address Order By A.User_Name, A.Address, C.Piece;
+Note: Verify query consuming lot of resource then find the explain plan of this particular query & compare it with previous plan. Follow the Sql Tuning troubleshooting.
+Detect Lock Objects
+select o.object_name,l.oracle_username,l.os_user_name,l.session_id ,decode(l.locked_mode,2,'Row-S',3,'Row-X',4,'Share',5,'S/Row-X',6 ,'Exclusive','NULL') from user_objects o , v$locked_object l where o.object_id = l.object_id;
+
+Note: Verify the lock objects, If it is lock contact the consult person to release it
+Display database sessions using rollback segments
+col RBS format a5 trunc
+col SID format 9990
+col USER format a10 trunc
+col COMMAND format a78 truncshifhusain@msn.com 6
+col status format a6 trunc
+SELECT r.name "RBS", s.sid, s.serial#, s.username "USER", t.status, t.cr_get, t.phy_io, t.used_ublk, t.noundo,
+substr(s.program, 1, 78) "COMMAND" FROM sys.v_$session s, sys.v_$transaction t, sys.v_$rollname r
+WHERE t.addr = s.taddr and t.xidusn = r.usn ORDER BY t.cr_get, t.phy_io;
+Note: Verify to monitor the session using the rollback segment
+State of all the DB Block Buffer
+set serverout on size 1000000
+set verify off
+select decode(state, 0, 'Free',1, decode(lrba_seq,0,'Available','Being Modified'), 2, 'Not Modified', 3, 'Being Read', 'Other') "BLOCK STATUS" ,count(*) cnt from sys.x$bh group by decode(state, 0, 'Free', 1, decode(lrba_seq,0,'Available','Being Modified'),2, 'Not Modified', 3, 'Being Read', 'Other');
+set verify on
+spool off
+
+Note:  Verify the status of DB block buffer. If available free block less then force the check point
+Check the Sync of the database from primary & standby db
+set linesize 300
+col error format a20
+col DESTINATION format a20
+select dest_id,status,target,error,destination from v$archive_dest;
+
+Note: Verify both the primary & standby db has to be in valid state, In case if any error resolve the db
+Check the Block corruption
+select * from v$database_block_corruption;
+
+Note: If you find any corruption resolve it ASAP
+Check the Invalid Object in database
+select object_name,object_type from dba_objects where status like 'INVALID';
+
+Note: If any of the object has invalid state, try to rebuild ASAP
+Check the individual tbs usage
+set linesize 180
+set pagesize 30
+select fs.tablespace_name  "Tablespace",  (df.totalspace - fs.freespace)  "Used MB",   fs.freespace "Free MB", df.totalspace  "Total MB",   round(100 * (fs.freespace / df.totalspace)) "Pct. Free" from   (select   tablespace_name,  round(sum(bytes) / 1048576) TotalSpace   from  dba_data_files  group by     tablespace_name) df,  (select  tablespace_name, round(sum(bytes) / 1048576) FreeSpace from  dba_free_space group by  tablespace_name) fs where df.tablespace_name = fs.tablespace_name;
+set linesize 180
+set pagesize 30
+col filename format a50;
+select a.tablespace_name, round(a.bytes/1073741824,3) as used_gb, round(b.bytes/1073741824,3) free_gb, round(b.bytes/1073741824,3) max_possibale_gb, a.exsize exten_size_mb, a.cnt data_files, c.bigfile "is bigfile",round(((a.bytes-b.bytes)/a.bytes)*100,2) "use%", a.fname filename from (select tablespace_name,sum(bytes) bytes,count(*) cnt,max(file_name) fname,sum(maxbytes) maxsize,max(relative_fno) exsize from dba_data_files group by tablespace_name) a, (select tablespace_name,sum(bytes) bytes from dba_free_space group by tablespace_name) b,dba_tablespaces c where a.tablespace_name=b.tablespace_name and  c.tablespace_name=b.tablespace_name order by "use%" desc;
+exit;
+
+Note: Verify all the tablespaces usage, If you find any of the tbs are getting fill try to extend the size or make it auto extend on.
+18: Verify the primary & standby database sync
+
+On Primary DB
+
+SELECT   a.thread#,  b. last_seq, a.applied_seq, a. last_app_timestamp, b.last_seq-a.applied_seq   ARC_DIFF FROM (SELECT  thread#, MAX(sequence#) applied_seq, MAX(next_time) last_app_timestamp FROM gv$archived_log WHERE applied = 'YES' GROUP BY thread#) a,(SELECT  thread#, MAX (sequence#) last_seq FROM gv$archived_log GROUP BY thread#) b WHERE a.thread# = b.thread#;
+
+On Standby DB
+
+select process, status, thread#, sequence#, block#, blocks from v$managed_standby ;
+
+select thread#, max(SEQUENCE#) FROM V$ARCHIVED_LOG where APPLIED='YES' group by thread#;
+
+Note: Verify primary & standby db sync, If it is not sync try to find the reason from the alert log & resolve it ASAP.
+Check the RMAN Backup files & its storage
+RMAN TARGET /
+
+Crosscheck backup
+
+List backup of database etc
+
+df –h
+WEEKLY CHECKLIST
+Check the Table fragmented
+select table_name, round((blocks*8),2) tablesize, round((num_rows*avg_row_len/1024),2) actualsize from dba_tables where table_name='T';
+
+Note: Verify the maximum extent & fragmented table & how to identified table is fragmented or not_and_resolve document to remove the fragmentation.
+Check the Chaining & Migrated Rows
+SELECT chain_cnt, round(chain_cnt/num_rows*100,2) pct_chained, avg_row_len, pct_free , pct_used
+FROM user_tables WHERE table_name = 'ROW_MIG_CHAIN_DEMO';
+
+Note:  Find the chaining & migrated rows in the table and follow the remove_chaning_migrated_rows document to remove the same.
+Check the size of tables & check weather it need to partition or not
+select table_name, round((blocks*8),2) tablesize, round((num_rows*avg_row_len/1024),2) actualsize from dba_tables where table_name='T';
+
+Note: Check the size of the table & follow the Partitioning in Oracle document to identify the table which are the candidate of partition.
+Check for Block corruption
+Use DBV utility follow the document check_block_corruption to check & rectify the same or following script.
+— Read from v$backup_corruption
+SELECT distinct 'Data Block# '|| block# || ' of Data File ' || name || ' is corrupted.' FROM $backup_corruption a, v$datafile b WHERE a.file# = b.file#;
+— Read from v$copy_corruption
+SELECT distinct 'Data Block# '|| block# || ' of Data File ' || name || ' is corrupted.'  FROM v$copy_corruption a, v$datafile b WHERE a.file# = b.file#;
+Check the tables without PK
+select sysdate,OWNER,TABLE_NAME from dba_tables dt where not exists (select 'TRUE' from dba_constraints dc where dc.TABLE_NAME = dt.TABLE_NAME and dc.CONSTRAINT_TYPE='P') and OWNER not in   ('SYS','SYSTEM') order by OWNER, TABLE_NAME
+Note: Check the tables having the primary key or not, if not found need to recommendation to create the same.
+Check the tables having no Indexes
+select OWNER, TABLE_NAME from dba_tables minus select TABLE_OWNER, TABLE_NAME from  dba_indexes orasnap_noindex where OWNER not in ('SYS','SYSTEM') order by  OWNER,TABLE_NAME;
+
+Note: Check the tables without index & give recommendation to create the same.
+Check the tables having more Indexes
+select sysdate,OWNER, TABLE_NAME, COUNT(*) index_count from dba_indexes where OWNER not in  ('SYS','SYSTEM') group by OWNER, TABLE_NAME having COUNT(*) > 5 order by COUNT(*) desc, OWNER, TABLE_NAME;
+
+Note: Check to identify the table having more index & analyze the index either they are created on same leading column or not.
+Check the tables having FK but there is no Index
+select sysdate,acc.OWNER, acc.CONSTRAINT_NAME, acc.COLUMN_NAME, acc.POSITION, 'No Index'  Problem from dba_cons_columns acc, dba_constraints ac where ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME and ac.CONSTRAINT_TYPE = 'R' and acc.OWNER not in ('SYS','SYSTEM') and not exists (select 'TRUE' from dba_ind_columns b where b.TABLE_OWNER = acc.OWNER  and b.TABLE_NAME = acc.TABLE_NAME and b.COLUMN_NAME = acc.COLUMN_NAME and b.COLUMN_POSITION = acc.POSITION) order by acc.OWNER, acc.CONSTRAINT_NAME, acc.COLUMN_NAME, acc.POSITION;
+
+Note: Check the table having the FK but there is no index that will lock the parent table.
+Check the objects having the more extents
+SELECT sysdate,segment_name table_name , COUNT(*) extents FROM dba_segments WHERE owner NOT IN ('SYS', 'SYSTEM') GROUP BY segment_name HAVING COUNT(*) = (SELECT MAX( COUNT(*) ) FROM dba_segments GROUP BY segment_name);
+
+Note: Check the maximum extent are allocated & analyze weather it will affect the performance or not.
+Check the frequently load objects & place them in separate tablespace & in cache
+select OWNER, NAME||' - '||TYPE object, LOADS from v$db_object_cache
+where LOADS > 3 and type in ('PACKAGE','PACKAGE BODY','FUNCTION','PROCEDURE')
+order by LOADS desc;
+
+Note: Check the object which needs to pin most the time. So we can place this object in separate tablespace as well as in keep cache.
+Check the free space at O/s Level
+Check the document of Stats_OS_level to check the free space at O/s Level & compare it with the threshold limit.
+Check the CPU, Memory usage at O/s level define the threshold for the same & follow the document Stats_OS_level to check the stats at O/s Level & compare it with the threshold limit
+Check the used & free Block (High Water Mark) at object level .
+Syntax:
+select block from dba_segments wheere owner=’<UPPER(table_name)>’ and segment_name=’<UPPER(table_name)>’;
+
+ANALYZE TABLE  ESTIMATE STATISTICS;
+
+SELECT EMPTY_BLOCKS FROM DBA_TABLES WHERE OWNER=’<UPPER(owner)>’ AND TABLE_NAME = ‘<UPPER(table)>’; Thus, the tables' HWM = (query result 1) - (query result 2) – 1;
+Check the objects reaching to its Max extents
+select sysdate,owner "Owner", segment_name "Segment Name", segment_type "Type", tablespace_name  "Tablespace", extents "Ext", max_extents "Max" from dba_segments where ((max_extents - extents) <= 3)
+
+and owner not in ('SYS','SYSTEM') order by owner, segment_name;
+
+ote: Check the objects reaching the max extent then compare it with the threshold limit.
+Check free Space in the tablespace
+SELECT a.tablespace_name, ROUND(a.totsize/1024/1024,0) "Tot Size (MB)", ROUND(NVL(b.used,0)/1024/1024,0) "Used (MB)", 100 - ROUND(((a.totsize - NVL(b.used,0)) / a.totsize) * 100,0) "% Used", ROUND(((a.totsize - NVL(b.used,0)) / a.totsize) * 100,0) "% Free" FROM (SELECT tablespace_name, SUM(bytes) totsize FROM dba_data_files GROUP  BY tablespace_name) a, (SELECT tablespace_name, SUM(bytes) used FROM dba_segments10 GROUP BY tablespace_name) b WHERE a.tablespace_name=b.tablespace_name (+) ORDER BY 1;
+
+Note: Check the free & used space in the tablespace. Incase if you require to add or resize fallow the doc.
+Check invalid objects of the database
+select sysdate,owner,object_name,object_type,status from dba_objects where status='INVALID' order by owner;s
+
+Note: Check the invalid objects in the database & run the script remove_invalid_object.sql to remove the same.
+Check open cursor not reaching to the max limit
+select max(a.value) as highest_open_cur, p.value as max_open_cur from v$sesstat a, v$statname b, v$parameter p where a.statistic# = b.statistic#  and b.name = 'opened cursors current' and p.name= 'open_cursors' group by p.value;
+
+Note: Check the Open_cursor.sql to verify open cursor are not reaching to threshold limit. If reaching to threshold limit then increase the value open_cursor using as per requirement
+Check locks not reaching to the max lock
+Run the script lock.sql to verify locks are not reaching to threshold limit. If reaching to threshold limit then increase the value max_lock using the document Lock_Object
+Check free quota limited available of each user with tablespace etc
+select * from dba_ts_quotas;
+
+or
+
+select tablespace_name,username,bytes/1024/1024,max_bytes,blocks/1024/1024,max_blocks from dba_ts_quotas;
+
+Note: Check free available quota in the tablespace with username. If it is reaching to the threshold limit then increase the quota limit as per client requirement.
+Check I/O of each data file
+select v$datafile.name "File_Name", v$filestat.phyrds "Reads",  v$filestat.phywrts "Writes" from  v$filestat,v$datafile where v$filestat.file# = v$datafile.file#;
+
+Note: Check the load on each datafile & manage to balance the load on each datafile.
+ 
+
+MONTHLY ACTIVITY
+
+ 
+
+Check is there any dead lock was occurred
+ Note: Check the “alert log” file to verify if there is dead lock occur while running the application, If any dead lock found then follow the Oracle doc “Dealock” to avoid the same in future.
+Check the database size & compare it previous size to find the exact growth of the database
+select sum(b.a) "DB SIZE IN GB" from (select sum(bytes)/1024/1024/1024 a from dba_data_files union select sum(bytes)/1024/1024/1024 from dba_temp_files) b;
+
+Note: Check the size of db growth & compare with previous for monitoring purpose.
+Find tablespace Status, segment management, initial & Max Extents etc from dba_tablespaces
+select tablespace_name,INITIAL_EXTENT, NEXT_EXTENT ,MAX_EXTENTS,EXTENT_MANAGEMENT,SEGMENT_SPACE_MANAGEMENT ,STATUS
+
+from dba_tablespaces;
+
+Note: Check the storage clause of the tbs in database & monitor respectively
+Check location of datafile & Used & free space of each datafile
+SELECT sysdate, SUBSTR (df.NAME, 1, 40) file_name, df.bytes /1024/1024 allocated_mb, ((df.bytes / 1024 / 1024) - NVL (SUM (dfs.bytes)/1024/1024, 0)) used_mb, NVL (SUM (dfs.bytes) / 1024 / 1024, 0) free_space_mb FROM v$datafile df, dba_free_space dfs WHERE df.file# = dfs.file_id(+)  GROUP BY dfs.file_id, df.NAME, df.file#, df.bytes ORDER BY file_name;
+
+Note: Check the location of data file & used & free of each datafile.
+Check default tablespace & temporary tablespace of each user
+select username,default_tablespace,temporary_tablespace,PROFILE from dba_users;
+
+Note: Check the each user has no system tablespace as a default tablespace.
+Check the Indexes which is not used yet
+set pages 999;
+set heading off;
+spool run_monitor.sql
+select 'alter index '||owner||'.'||index_name||' monitoring usage;'
+from dba_indexes where owner not in ('SYS','SYSTEM','PERFSTAT');
+spool off;
+@run_monitor
+Select index_name mon, used from v$object_usage;
+
+Note: Run the script index_usages.sql to check weather indexes un-used.
+Check the overall database statistics
+Note: Check the statpack_report.sql to find the overall database performance & follow the database performance document to make sure database well optimized.
+Tablespace need coalescing
+select tablespace_name, percent_extents_coalesced from dba_free_space_coalesced where percent_extents_coalesced <> 100;
+
+Note: Check any tablespace need coalescing or not
+Trend Analysis of tablespace,
+select ts.name, (sum(bytes)/1024/1024)/max(ceil(months_between(sysdate,creation_time)))
+"AVG. SIZE in MB", (sum(bytes)/1024/1024)/max(ceil(months_between(sysdate,creation_time)))
+* 3 "Space for Next 3 MONTH in MB" from sys.v_$datafile dt, v$tablespace ts where dt.ts# = ts.ts# group by ts.name;
+
+Note: Check the growth trend of the tablespace.
+NIGHTLY ACTIVITY
+
+Analyzed the objects routinely.
+exec dbms_stats.gather_schema_stats(ownname=>'MIR',cascade => TRUE);
+
+Note: Run the above command to check analysis & while there is less activity in the night to collect the statistics of the Objects so that Oracle optimizers can you the best execution plan.
+Check the Index need to Rebuild
+select NAME, HEIGHT, DEL_LF_ROWS, DISTINCT_KEYS, ROWS_PER_KEY,
+
+BLKS_GETS_PER_ACCESS from INDEX_STATS;
+
+Note: Check the indexes which is required to rebuild then run the script index_rebuil.sql to rebuild the indexes
+Check the tablespace for respective Tables & Indexes
+select owner,segment_name,segment_type,tablespace_name from dba_segments where owner='OWNER_NAME' order by segment_type;
+
+Note: Check all the index and table are on separate tablespace. Follow the move_index_seprate_tablespace document to place the index on separate tablespace. Do this activity in the night.
+Check the No. of DML operation perform after last analysis
+select inserts,updates,deletes,table_owner,table_name from sys.dba_tab_modifications where table_name=<’TABLE_NAME'>;
+Check the No. of Date of Last Analysis & No. of Record in the Table
+select TABLE_NAME, NUM_ROWS, LAST_ANALYZED from dba_tables where
+
+table_name=<'TABLE_NAME'>;
+How to determine the table is required to analysis or not
+Note : Compare the Number of rows, with no of insert, delete & update records, if this is more than 10% of number of rows then this table having the statle stats & need to analysis again
+Find fragmentation in the tables
+SELECT * FROM (SELECT SUBSTR(TABLE_NAME, 1, 21) TABLE_NAME, NUM_ROWS, AVG_ROW_LEN ROWLEN, BLOCKS, ROUND((AVG_ROW_LEN + 1) * NUM_ROWS / 1000000, 0) NET_MB, ROUND(BLOCKS * (8000 - 23 * INI_TRANS) * (1 - PCT_FREE / 100) / 1000000, 0) GROSS_MB, ROUND((BLOCKS * (8000 - 23 * INI_TRANS) * (1 - PCT_FREE / 100) - (AVG_ROW_LEN + 1) * NUM_ROWS) / 1000000) "WASTED_MB" FROM DBA_TABLES WHERE NUM_ROWS IS NOT NULL AND OWNER LIKE 'SAP%' AND PARTITIONED = 'NO' AND (IOT_TYPE != 'IOT' OR IOT_TYPE IS NULL) ORDER BY 7 DESC) WHERE ROWNUM <=20;
+Check Catproc & Catlogs Objects are Valid or not
+Select COMP_ID, COMP_NAME, VERSION,STATUS from dba_registry;
+Share Pool Advisory
+SELECT shared_pool_size_for_estimate,shared_pool_size_factor, estd_lc_time_saved FROM v$shared_pool_advice;
+Buffer Cache Advisory
+column c1 heading 'Cache Size (m)' format 999,999,999,999
+
+column c2 heading 'Buffers' format 999,999,999
+
+column c3 heading 'Estd Phys|Read Factor' format 999.90 column
+
+c4 heading 'Estd Phys| Reads' format 999,999,999
+
+select size_for_estimate c1, buffers_for_estimate c2,  estd_physical_read_factor c3, estd_physical_reads c4
+
+from v$db_cache_advice where name = 'DEFAULT' and block_size = (SELECT value FROM V$PARAMETER WHERE name = 'db_block_size') and advice_status = 'ON';
+How to restore the Table stats – if DBMS_STATS used
+EXEC DBMS_STATS.RESTORE_TABLE_STATS('', '', SYSDATE - 1);
+
+ Check which session is blocking to whoms
+
+select l1.sid, ' IS BLOCKING ', l2.sid from v$lock l1, v$lock l2 where l1.block =1 and l2.request > 0
+
+and l1.id1=l2.id1 and l1.id2=l2.id2;
+Check tablespace of tables & index
+select count(segment_type) from dba_segments where segment_type='INDEX' and
+
+tablespace_name=<'PSAPHCM'>;
+
+select count(segment_type) from dba_segments where segment_type='TABLE' and
+
+tablespace_name= <'PSAPHCM>'
+UNDO Tablespace need
+set linesize 120
+set pagesize 60
+alter session set nls_date_format = "dd-Mon-yyyy hh24:mi:ss";
+COL TXNCOUNT FOR 99,999,999 HEAD 'Txn. Cnt.'
+COL MAXQUERYLEN FOR 99,999,999 HEAD 'Max|Query|Sec'
+COL MAXCONCURRENCY FOR 9,999 HEAD 'Max|Concr|Txn'
+COL bks_per_sec FOR 99,999,999 HEAD 'Blks per|Second'
+COL kb_per_second FOR 99,999,999 HEAD 'KB per|Second'
+COL undo_mb_required FOR 999,999 HEAD 'MB undo|Needed'
+COL ssolderrcnt FOR 9,999 HEAD 'ORA-01555|Count'
+COL nospaceerrcnt FOR 9,999 HEAD 'No Space|Count'
+break on report
+compute max of txncount -
+maxquerylen -
+maxconcurrency -
+bks_per_sec -
+kb_per_second -
+undo_mb_required on report
+compute sum of -
+ssolderrcnt -
+nospaceerrcnt on report
+SELECT begin_time,
+txncount-lag(txncount) over (order by end_time) as txncount,
+maxquerylen,
+maxconcurrency,
+undoblks/((end_time - begin_time)*86400) as bks_per_sec,
+(undoblks/((end_time - begin_time)*86400)) * t.block_size/1024
+as kb_per_second,
+((undoblks/((end_time - begin_time)*86400)) * t.block_size/1024)
+* TO_NUMBER(p2.value)/1024 as undo_MB_required,
+ssolderrcnt,
+nospaceerrcnt
+FROM v$undostat s,
+dba_tablespaces t,
+v$parameter p,
+v$parameter p2
+WHERE t.tablespace_name = UPPER(p.value)
+AND p.name = 'undo_tablespace'
+AND p2.name = 'undo_retention'
+ORDER BY begin_time;
+
+ACTIVE - Undo Extent is Active, Used by a transaction. – using
+
+EXPIRED - Undo Extent is expired (Exceeded the Undo Retention). - free
+
+UNEXPIRED - Undo Extent will be required to honour UNDO_RETENTION – may be need
+Undo Tablespace shrink by SMON after every 12 hrs. if more space is required.
+SELECT DISTINCT STATUS, SUM(BYTES), COUNT(*) FROM DBA_UNDO_EXTENTS GROUP BY STATUS;
+CHECK the SIZE of each data file
+SELECT SUBSTR (df.NAME, 1, 40) file_name, df.bytes / 1024 / 1024 allocated_mb, ((df.bytes / 1024 / 1024) - NVL (SUM (dfs.bytes) / 1024 / 1024, 0))  used_mb, NVL (SUM (dfs.bytes) / 1024 / 1024, 0) free_space_mb FROM v$datafile df, dba_free_space dfs  WHERE df.file# = dfs.file_id(+)  GROUP BY dfs.file_id, df.NAME, df.file#, df.bytes  ORDER BY file_name;
+Check the tablespace usages – considering the auto extend parameter on always
+select tablespace_name,sum(user_bytes)/1024/1024 "USED(MB)",sum(maxbytes)/1024/1024 "MAXBYTES(MB)",sum(maxbytes)/1024/1024 "FREESPACE(MB)",sum((user_bytes*100)/1024/1024)/(sum(maxbytes)/1024/1024) "USED%" from dba_data_files group by tablespace_name;
+Check the tablespaces usages – consider the auto extend on or not
+SELECT BB.tablespace_name, BB.USED, BB.MAXBYTES, BB.FREESPACE,BB.USEDP FROM (select tablespace_name, ROUND(sum(user_bytes)/1024/1024,2) USED,ROUND(sum(maxbytes)/1024/1024,2) MAXBYTES, ROUND(sum(maxbytes-user_bytes)/1024/1024,2) FREESPACE, ROUND(sum((user_bytes*100)/1024/1024)/(sum(maxbytes)/1024/1024),2) USEDP from dba_data_files d where d.autoextensible='YES' group by tablespace_name ) BB WHERE BB.USEDP>85 UNION select aa.tb, AA.Used_Space, AA.Total_Space, AA.Free_Space,(Used_Space*100/Total_Space) Perc from (select fs.tablespace_name tb, sum(fs.bytes/1024/1024) Free_Space, sum(df.bytes/1024/1024) Total_Space, sum(df.bytes/1024/1024) - sum(fs.bytes/1024/1024) Used_Space from dba_free_space fs, dba_data_files df where fs.tablespace_name=df.tablespace_name AND dF.autoextensible='NO' group by fs.tablespace_name ) aa where (Used_Space*100/Total_Space)>85;
+=============Hence tested all the scripts in our test env & verified==================
