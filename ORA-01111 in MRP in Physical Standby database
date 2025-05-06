@@ -1,0 +1,81 @@
+Alert Log in Standby Shows MRP is terminated with below error
+=================================================================
+File #8 added to control file as 'UNNAMED00008' because
+the parameter STANDBY_FILE_MANAGEMENT is set to MANUAL
+The file should be manually created to continue.
+MRP0: Background Media Recovery terminated with error 1111
+Thu Jan 08 11:02:35 2016
+Errors in file /u01/oracle/product/11.2.0/diag/rdbms/TEST/test/trace/TEST_mrp0_6436.trc:
+ORA-01111: name for data file 129 is unknown - rename to correct file
+ORA-01111: name for data file 129 is unknown - rename to correct file
+ORA-01110: data file 129: '/u01/oracle/product/11.2.0/dms/UNNAMED00008'
+
+Reason for ORA-01111
+This Error ORA-01111 occurs if we add a Datafile OR Tablespace in PRIMARY Database and that could not be translated to the Standby Database due to these Reasons:
+
+Standy_file_management is set to MANUAL
+Primary & Physical Standby are having different file structures and DB_FILE_NAME_CONVERT is not set according to the Directory Structures in Primary and Standby
+Insufficient Space or wrong Permissions on the Standby Database to create the Datafile
+The Redo Log generated from Primary will have Information about the Tablespace / Datafile added however it could not be created successfully in Physical Standby Database due to the standby_file_management = MANUAL
+or is not able to find the specified Folder due to a missing / incorrect Filename Conversion. The File Entry is added to Standby Controlfile as “UNNAMED0000n” in /dbs or /database folder depends on the Operating System and eventually the MRP terminates.
+
+Solution of ORA-01111
+Perform all mentioned Steps on the Standby Database:
+
+Step 1: Ensure the standby_file_management = ‘MANUAL’
+
+Ezoic
+NOTE : For the parameter db_file_name_convert change if the Data Guard Broker is enabled then edit the Parameters using the Broker,
+
+DGMGRL>edit database '<standby>' set property DbFileNameConvert='/u01','+DATA';
+DGMGRL>edit database '<standby>' set property StandbyFileManagement=manual;
+By default StandbyFileManagement is AUTO by broker.
+
+Step 2: Identify the File which is “unnamedn”
+
+SQL> select name from v$datafile;
+NAME
+---------------------------------------
++DATA/TEST/datafiles/SYSTEM.DBF
++DATA/TEST/datafiles/UNDO.DBF
++DATA/TEST/datafiles/SYSAUX.DBF
++DATA/TEST/datafiles/index1.DBF
+/u01/oracle/product/11.2.0/dms/UNNAMED00008
+Step 3: Rename/create the Datafile to the correct Filename
+
+SQL> alter database create datafile '/u01/oracle/product/11.2.0/dms/UNNAMED00008' as '+DATA/TEST/datafiles/appstex.dbf';
+or
+SQL>alter database create datafile '/u01/oracle/product/11.2.0/dms/UNNAMED00008' as new;
+Step 4: Verify the Filename is correct
+
+SQL> select name from v$datafile;
+NAME
+-------------------------------------------------
++DATA/TEST/datafiles/SYSTEM.DBF
++DATA/TEST/datafiles/UNDO.DBF
++DATA/TEST/datafiles/SYSAUX.DBF
++DATA/TEST/datafiles/index1.DBF
++DATA/TEST/datafiles/appstex.dbf
+
+Step 5: Change the STANDBY_FILE_MANAGEMENT to AUTO
+
+SQL> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO scope=both;
+
+Step 6: Start the MRP (this is using Real Time Apply)
+
+SQL> alter database recover managed standby database using current logfile disconnect;
+ Database altered.
+Step 7: Verify the MRP is running as expected
+
+SQL> select process, status , sequence# from v$managed_standby;
+PROCESS STATUS SEQUENCE#
+--------- ------------ ----------
+ARCH CLOSING 1014
+ARCH CLOSING 1013
+MRP0 APPLYING_LOG 1001
+RFS IDLE 0
+RFS IDLE 0
+RFS IDLE 1015
+Step 8:  Make sure you corrected the error which caused failure of creation of file.
+
+We have to ensure the STANDBY_FILE_MANAGEMENT and DB_FILE_CONVERT parameter are correct
