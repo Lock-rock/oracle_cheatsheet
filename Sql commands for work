@@ -17,6 +17,7 @@ RENAME old_table_name TO new_table_name;
 Create table from another table:
 CREATE TABLE new_table AS SELECT * FROM existing_table WHERE 1=0;  ---without data
 
-
+Rebuild an index:
+alter index index_name rebuild online;
 
 
