@@ -1,0 +1,9 @@
+To find the SQL_ID, execute:
+
+
+SELECT sql_id, plan_hash_value, substr(sql_text,1,50) sql_text  
+FROM v$sql 
+WHERE sql_text LIKE 'SELECT /* PERFORMANCE CHECK */%';
+🔹 Sample Output:
+SQL_ID	PLAN_HASH_VALUE	SQL_TEXT
+5abcn9xyz3	123456789	SELECT /* PERFORMANCE CHECK */ emp_name ...
