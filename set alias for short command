@@ -5,3 +5,9 @@ echo "alias d='df -gt'" >> ~/.profile
 un set alias:
 
 unalias alias_name
+
+expamples:  alias cdob='cd $ORACLE_BASE'
+alias cdoh='cd $ORACLE_HOME'
+alias tns='cd $ORACLE_HOME/network/admin'
+alias envo='env | grep ORACLE'
+
