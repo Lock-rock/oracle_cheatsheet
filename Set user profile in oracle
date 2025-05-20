@@ -1,0 +1,33 @@
+# User specific environment and startup programs
+export PATH
+
+# Oracle Settings
+export TMP=/tmp
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/lib:/usr/lib;
+export CLASSPATH=$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib;
+ORACLE_SID=ora18c_stby;
+export ORACLE_SID
+ORACLE_UNQNAME=ora18c_stby;
+export ORACLE_UNQNAME
+ORACLE_HOSTNAME=oracle18stby;
+export ORACLE_HOSTNAME
+ORACLE_BASE=/u01/app/oracle;
+export ORACLE_BASE
+ORACLE_HOME=/u01/ora18c_db_home;
+export ORACLE_HOME
+export PATH=/usr/sbin:$PATH:$ORACLE_HOME/bin:$HOME/.local/bin:$HOME/bin
+alias cdob='cd $ORACLE_BASE'
+alias cdoh='cd $ORACLE_HOME'
+alias tns='cd $ORACLE_HOME/network/admin'
+alias envo='env | grep ORACLE'
+umask 022
+
+if [ $USER = "oracle" ]; then
+    if [ $SHELL = "/bin/ksh" ]; then
+       ulimit -u 16384
+       ulimit -n 65536
+    else
+       ulimit -u 16384 -n 65536
+    fi
+fi
+#envo
