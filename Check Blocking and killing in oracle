@@ -24,6 +24,11 @@ FIND SQL_ID TO SQL_QUERY:
 select sql_fulltext from V$sql where sql_id='3sru2kbub05dm';
 select sql_id, state, last_call_et, event, program, osuser from v$session where sql_id='3sru2kbub05dm';
 
+SELECT s.sid, s.serial#, s.username, s.status, s.machine, s.program
+FROM v$session s
+JOIN v$sqlarea a ON s.sql_id = a.sql_id
+WHERE a.sql_id = 'YOUR_SQL_ID';  -- Replace 'YOUR_SQL_ID' with the actual SQL_ID
+
 REMOVE THE LOCKS:
 ALTER SYSTEM KILL SESSION '<sid, serial#>'
 
