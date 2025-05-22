@@ -10,4 +10,8 @@ expamples:  alias cdob='cd $ORACLE_BASE'
 alias cdoh='cd $ORACLE_HOME'
 alias tns='cd $ORACLE_HOME/network/admin'
 alias envo='env | grep ORACLE'
+alias arch=''
+alias bkpf=''
+alias bkpi=''
+alias arch=''
 
