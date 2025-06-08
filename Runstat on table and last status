@@ -54,3 +54,11 @@ select Owner, TABLE_NAME, LAST_ANALYZED, CHAIN_CNT, NUM_ROWS, BLOCKS, EMPTY_BLOC
 
 exexute owner all table runstats:
 EXEC DBMS_STATS.gather_schema_stats (ownname => 'DBSNMP', cascade =>true, degree =>2);
+
+BEGIN
+  DBMS_STATS.GATHER_SCHEMA_STATS(
+    ownname => 'YOUR_SCHEMA_NAME',  -- Replace with the actual schema name
+    cascade => TRUE                   -- This gathers stats for indexes as well
+  );
+END;
+/
