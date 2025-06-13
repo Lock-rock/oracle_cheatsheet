@@ -27,3 +27,65 @@ S:3A75A83D83966C1668D8440389F62FF390FAB9DC2EA0DEBCD0ED86FF2ECC;T:0D54A7B25CCA270
 211D041D5FC88B41A4367B73F0D5A1F86CE4F05A5C714A55FA82496343D0EDF8F
 
 alter user POSDEV identified by values  'S:3A75A83D83966C1668D8440389F62FF390FAB9DC2EA0DEBCD0ED86FF2ECC;T:0D54A7B25CCA27053005CE88A609497F7858A2827EB01FDF93451F6E00BAA4ED70BDA2D7F0FC8C61BA18EF28B3488D9211D041D5FC88B41A4367B73F0D5A1F86CE4F05A5C714A55FA82496343D0EDF8F';
+
+
+User passwd never expire:
+
+1. First check the account status and the associated profile of the user whose password needs to be set to never expire:
+
+col username format a20
+col ACCOUNT_STATUS format a20
+col profile format a25
+SELECT username, account_status,profile, expiry_date FROM dba_users WHERE username ='SAM';
+
+USERNAME             ACCOUNT_STATUS                   PROFILE         EXPIRY_DA
+-------------------- -------------------------------- --------------- ---------
+SAM                  EXPIRED                          DEFAULT         26-MAY-24
+
+
+2. Now find out all the resource limits related to the password for the default profile:
+
+col resource_name format a30
+col LIMIT format a10
+SQL> SELECT resource_name, limit FROM dba_profiles WHERE profile = 'DEFAULT' and RESOURCE_TYPE='PASSWORD';
+
+RESOURCE_NAME                  LIMIT
+------------------------------ ----------
+FAILED_LOGIN_ATTEMPTS          10
+PASSWORD_LIFE_TIME             180
+PASSWORD_REUSE_TIME            UNLIMITED
+PASSWORD_REUSE_MAX             UNLIMITED
+PASSWORD_VERIFY_FUNCTION       NULL
+PASSWORD_LOCK_TIME             1
+PASSWORD_GRACE_TIME            7
+INACTIVE_ACCOUNT_TIME          UNLIMITED
+
+8 rows selected.
+
+3. Create a profile called Password_never_expire with PASSWORD_LIFE_TIME UNLIMITED:
+
+CREATE PROFILE "Password_never_expire"
+    LIMIT
+         FAILED_LOGIN_ATTEMPTS 10  
+	 PASSWORD_LIFE_TIME UNLIMITED	
+	 PASSWORD_REUSE_TIME UNLIMITED
+	 PASSWORD_REUSE_MAX UNLIMITED
+	 PASSWORD_VERIFY_FUNCTION NULL
+         PASSWORD_LOCK_TIME 1
+	 PASSWORD_GRACE_TIME 7
+	 INACTIVE_ACCOUNT_TIME UNLIMITED;
+
+4. Set Oracle database user password to never expire:
+
+alter user SAM profile PASSWORD_NEVER_EXPIRE;
+
+col username format a20
+col ACCOUNT_STATUS format a20
+col profile format a25
+SELECT username, account_status,profile, expiry_date FROM dba_users WHERE username ='SAM';
+
+USERNAME             ACCOUNT_STATUS       PROFILE                   EXPIRY_DA
+-------------------- -------------------- ------------------------- ---------
+SAM                  EXPIRED              PASSWORD_NEVER_EXPIRE     26-MAY-24
+
+
