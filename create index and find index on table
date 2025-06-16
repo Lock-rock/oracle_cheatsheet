@@ -3,3 +3,18 @@ CREATE INDEX index_name ON table_name(column1[,column2,...]);
 SELECT index_name, index_type, visibility, status FROM all_indexes WHERE table_name = 'MEMBERS';
 
 DROP INDEX index_name;
+
+check index on table and column:
+
+SELECT 
+    i.owner, 
+    i.index_name, 
+    c.column_name, 
+    c.column_position
+FROM 
+    all_indexes i
+JOIN 
+    all_ind_columns c ON i.index_name = c.index_name AND i.owner = c.index_owner
+WHERE 
+    c.table_name = 'ITGI_BIX_CU'  -- Use only the table name in uppercase
+    AND i.owner = 'BIXUSER';
