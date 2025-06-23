@@ -1,0 +1,12 @@
+Check table and the size which tablespace lies:
+
+SELECT owner, segment_name, segment_type, sum(bytes)/1024/1024/1024 "Size (GB)" 
+FROM dba_segments 
+WHERE tablespace_name = 'USERS' 
+GROUP BY owner, segment_name, segment_type 
+ORDER BY 4 DESC;
+
+
+SELECT owner, TO_CHAR( SUM( bytes )/1024/1024, '999,999,999' ) mb FROM dba_segments WHERE tablespace_name = 'USERS' GROUP BY owner ORDER BY SUM( bytes );
+select * from dba_segments where tablespace_name = 'USERS'
+select * from dba_users where default_tablespace = 'USERS'
