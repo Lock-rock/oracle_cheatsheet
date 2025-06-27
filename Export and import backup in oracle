@@ -9,6 +9,12 @@ schemas=PRODCLASS,DBACLASS (for number or schema)
 include=TABLE (for table only in schema)
 exclude=INDEX (for index only in table)
 
+Import table to a different name or rename table or remap_table:
+remap_table='SCOTT.EMP:HR.EMPLOYEE'
+
+Import only the rows from an exported table without loading table any table definitions:
+content=DATA_ONLY
+
 ORACLE IMPDP-BACKUP:
 impdp \"sys/sys123 as sysdba\" dumpfile=SI_CORE_DWH.dmp directory=IMPDP logfile=SI_CORE_DWH.log
 
