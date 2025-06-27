@@ -83,6 +83,10 @@ set lines 2000
 col MESSAGE for a90
 select message,timestamp from V$DATAGUARD_STATUS where timestamp > sysdate - 1/6;
 
+select inst_id, DEST_ID,DEST_NAME,STATUS,DESTINATION,error from gv$archive_dest_status where status <> 'INACTIVE' order by 1,2,3;
+select PROCESS,STATUS from v$managed_standby;
+
+
 
 CHECK THE NUMBER OF ARCHIVES GETTING GENERATING ON HOURLY BASIS:
 select TO_CHAR(TRUNC(FIRST_TIME),'Mon DD') "DG Date",
