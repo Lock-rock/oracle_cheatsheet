@@ -557,4 +557,123 @@ Oracle Database Vault                    VALID
 
 15 rows selected.
 
+#####################################################################################################Restoration or oracle database Rman backup     #######################################################################
+export ORACLE_SID=PEGAPRD
+export ORACLE_HOME=/u01/app/oracle/product/12.2.0/dbhome_1
+export PATH=${PATH}:${ORACLE_HOME}/bin
 
+
+scp orapwIDITPRODDB oracle@10.10.2.152/orahome/app/oracle/product/19.0.0/dbhome_1/dbs            
+
+scp 1_77084_1055846782.dbf oracle@10.10.1.175:/tempfs
+
+startup nomount pfile='/u01/app/oracle/product/12.2.0/dbhome_1/dbs/initPEGAPRD.ora';
+
+create spfile from pfile;
+shut immediate;
+startup nomount;
+
+show parameter spfile
+
+ALTER DATABASE nomount;
+
+restore controlfile from '/backup/control.ctl';--only rman 
+
+ALTER DATABASE MOUNT;---rman or sql both 
+
+catalog start with '/backup/RMAN/full';      
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 24;
+
+run
+{ set newname for database to '/oradata/IDITPRODDB/datafile/IDITPRODDB/%b';
+restore  database;
+SWITCH DATAFILE ALL;
+}
+
+alter database open resetlogs;
+
+control.bkp
+
+
+REPORT SCHEMA
+---- for checking restoration status----- https://www.orafaq.com/wiki/Monitor_RMAN_restore
+
+-----------for applying incrmental backup---------
+shutdown immediate;
+
+
+startup nomount
+
+restore controlfile from '/backup/level1/LEVEL_1_PEGAPRD_20240728_57487_1_4f310ndt.ctl';  --only rman 
+
+ALTER DATABASE MOUNT;
+
+
+catalog start with '/backup/level1';      
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 50;
+
+
+run
+{ set newname for database to '/oradata/IDITPRODDB/datafile/IDITPRODDB/%b';
+recover  database;
+switch datafile all;
+}
+     B                                                                                                                                                                                                                                                                                                                                                                                                 
+
+
+
+catalog start with '/backup/restore2';
+catalog start with 'full pathname';
+
+
+
+for check the status 
+set line 2222;
+set pages 2222;
+set long 6666;
+select sl.sid, sl.opname,
+to_char(100*(sofar/totalwork), '990.9')||'%' pct_done,
+sysdate+(TIME_REMAINING/60/60/24) done_by
+from v$session_longops sl, v$session s
+where sl.sid = s.sid
+and sl.serial# = s.serial#
+and sl.sid in (select sid from v$session where module like 'backup%' or module like 'restore%' or module like 'rman%')
+and sofar != totalwork
+and totalwork > 0
+/
+
+Thanks and regards,
+Himanshu
+DBA Team
+Ext:- 403
+
+SELECT 'Throughput: '||
+       ROUND(SUM(v.value/1024/1024/1024),1) || ' GB so far @ ' ||
+       ROUND(SUM(v.value/1024/1024)/NVL((SELECT MIN(elapsed_seconds)
+            FROM v$session_longops
+            WHERE opname          LIKE 'RMAN: aggregate input'
+              AND sofar           != TOTALWORK
+              AND elapsed_seconds IS NOT NULL
+       ),SUM(v.value     /1024/1024)),2) || ' MB/sec'
+FROM gv$sesstat v, v$statname n, gv$session s
+WHERE v.statistic# = n.statistic#
+  AND n.name       = 'physical write total bytes'
+  AND v.sid        = s.sid
+  AND v.inst_id    = s.inst_id
+  AND s.program LIKE 'rman@%'
+GROUP BY n.name
+/
+
+
+archived log thread=1 sequence=559503
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of recover command at 07/30/2024 22:53:17
+RMAN-06054: media recovery requesting unknown archived log for thread 1 with sequence 559503 and starting SCN of 768360827311
+
+
+catalog start with '/pegahome/app/oracle/oradata/orcl/arch';
+catalog start with 'full pathname';
