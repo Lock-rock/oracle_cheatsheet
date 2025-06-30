@@ -87,37 +87,20 @@ select inst_id, DEST_ID,DEST_NAME,STATUS,DESTINATION,error from gv$archive_dest_
 select PROCESS,STATUS from v$managed_standby;
 
 
+set linesize 200 pages 50
+col value for a85
+col name for a50
 
-CHECK THE NUMBER OF ARCHIVES GETTING GENERATING ON HOURLY BASIS:
-select TO_CHAR(TRUNC(FIRST_TIME),'Mon DD') "DG Date",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'00',1,0)),'9999') "12AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'01',1,0)),'9999') "01AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'02',1,0)),'9999') "02AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'03',1,0)),'9999') "03AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'04',1,0)),'9999') "04AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'05',1,0)),'9999') "05AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'06',1,0)),'9999') "06AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'07',1,0)),'9999') "07AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'08',1,0)),'9999') "08AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'09',1,0)),'9999') "09AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'10',1,0)),'9999') "10AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'11',1,0)),'9999') "11AM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'12',1,0)),'9999') "12PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'13',1,0)),'9999') "1PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'14',1,0)),'9999') "2PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'15',1,0)),'9999') "3PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'16',1,0)),'9999') "4PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'17',1,0)),'9999') "5PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'18',1,0)),'9999') "6PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'19',1,0)),'9999') "7PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'20',1,0)),'9999') "8PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'21',1,0)),'9999') "9PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'22',1,0)),'9999') "10PM",
-TO_CHAR(SUM(DECODE(TO_CHAR(FIRST_TIME,'HH24'),'23',1,0)),'9999') "11PM"
-FROM V$LOG_HISTORY
-GROUP BY TRUNC(FIRST_TIME)
-ORDER BY TRUNC(FIRST_TIME) DESC
-/
+======================================================DR configuration on both side ======================================================================================================
+select name, value 
+from gv$parameter
+where name in ('db_name','db_unique_name','log_archive_config',    
+'log_archive_dest_1','log_archive_dest_2','log_archive_dest_3',
+'log_archive_dest_state_1','log_archive_dest_state_2','log_archive_dest_state_3', 
+'remote_login_passwordfile','log_archive_format','log_archive_max_processes',
+'fal_server','fal_client','db_file_name_convert',
+'log_file_name_convert', 'standby_file_management') 
+order by 1;
                                                                                    
 ==========================================================================================================================================================================================
 on Standby server:
