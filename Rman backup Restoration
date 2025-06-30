@@ -278,3 +278,283 @@ where not a.STATUS in ('UNKNOWN') and s.status='ACTIVE' and a.STATUS <> 'FINISHE
 and a.sid=s.sid order by 6 desc,7;
 #####################################################################################################################################################################################################
 
+
+export ORACLE_SID=PreProd
+export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1
+export PATH=${PATH}:${ORACLE_HOME}/bin
+
+
+scp orapwIDITPRODDB oracle@10.10.2.02/orahome/app/oracle/product/19.0.0/dbhome_1/dbs            
+
+scp 1_77084_1055846782.dbf oracle@10.10.1.190:/tempfs
+
+startup nomount pfile='/u01/app/oracle/product/19.0.0/dbhome_1/dbs/initPEGAPRD.ora';
+
+create spfile from pfile;
+shut immediate;
+
+startup nomount;
+
+rman target /
+
+restore controlfile from '/backup/RMAN/full/LEVEL_0_PEGAPRD_20240806_57744_1_cg31osq6.ctl';--only rman 
+
+ALTER DATABASE MOUNT;---rman or sql both 
+
+catalog start with '/backup/RMAN/full';      
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 60;
+
+run
+{ set newname for database to '/oradata/IDITPRODDB/datafile/IDITPRODDB/%b';
+	restore  database;
+SWITCH DATAFILE ALL;
+}
+
+
+mkdir -p /u01/app/oracle/product/19.0.0/dbhome_1
+mkdir -p /u01/app/oraInventory
+
+unzip AIX.PPC64_193000_db_home.zip -d /u01/app/oracle/product/19.0.0/dbhome_1/dbs/initPEGAPRD.ora
+
+STANDBY_ARCHIVE_DEST
+db_create_file_dest
+
+
+
+PreProd:/u01/app/oracle/product/19.0.0/dbhome_1:Y
+PEGAPRD:/u01/app/oracle/product/12.2.0/dbhome_1:Y
+
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD
+mkdir -p /u01/app/oracle/admin/NPEGAPRD/adump
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD
+mkdir -p /u01/app/oracle/fast_recovery_area/NPEGAPRD
+mkdir -p /u01/app/oracle/admin/NPEGAPRD/cdump
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD
+mkdir -p /pegahome/fast_recovery_area
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD
+mkdir -p /pegahome/fast_recovery_area
+mkdir -p /pegahome/app/oracle/oradata/orcl/arch
+
+chown -R oracle:oinstall /u01 /u02 
+
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD/NPEGAPRD/datafile
+mkdir -p /u01/app/oracle/oradata/NPEGAPRD/NPEGAPRD/datafile
+mkdir -p /u02/PEGAPRD/datafile
+
+
+shut immediate;
+
+startup nomount;
+
+restore controlfile from '/backup/level1/LEVEL_1_PEGAPRD_20240728_57487_1_4f310ndt.ctl';--only rman 
+
+ALTER DATABASE MOUNT;---rman or sql both 
+
+catalog start with '/backup/level1/LEVEL_1';  
+
+catalog start with '/backup/level1';    
+
+CONFIGURE DEVICE TYPE DISK PARALLELISM 70;
+
+Check restoration running :
+
+SELECT 'Throughput: '||
+       ROUND(SUM(v.value/1024/1024/1024),1) || ' GB so far @ ' ||
+       ROUND(SUM(v.value/1024/1024)/NVL((SELECT MIN(elapsed_seconds)
+            FROM v$session_longops
+            WHERE opname          LIKE 'RMAN: aggregate input'
+              AND sofar           != TOTALWORK
+              AND elapsed_seconds IS NOT NULL
+       ),SUM(v.value     /1024/1024)),2) || ' MB/sec'
+FROM gv$sesstat v, v$statname n, gv$session s
+WHERE v.statistic# = n.statistic#
+  AND n.name       = 'physical write total bytes'
+  AND v.sid        = s.sid
+  AND v.inst_id    = s.inst_id
+  AND s.program LIKE 'rman@%'
+GROUP BY n.name
+/
+
+
+/backup/level1
+
+
+
+level 0 restoration started at 2:30PM 07/AUG/2024 and complted at 7PM with 8 cpu 
+3 days archive scp in 1:10 hours
+recovery started at 11:35 and completed at 08/08/2024 11:58:22
+upgradation started at 12 PM
+
+
+completed at 01:00 PM
+------------------------------------------------------
+Phases [0-107]         End Time:[2024_08_08 12:31:38]
+------------------------------------------------------
+
+Grand Total Time: 1703s
+
+ LOG FILES: (/u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/NPEGAPRD/upgrade20240808120305/catupgrd*.log)
+
+Upgrade Summary Report Located in:
+/u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/NPEGAPRD/upgrade20240808120305/upg_summary.log
+
+Grand Total Upgrade Time:    [0d:0h:28m:23s]
+
+SQL> set lines 200 pages 200
+SQL> col comp_name for a40
+SQL> select comp_name, status from dba_registry;
+
+
+SQL>  @$ORACLE_HOME/rdbms/admin/utlrp.sql
+
+
+select comp_name, status from dba_registry;
+
+SQL> startup;
+ORACLE instance started.
+
+Total System Global Area 1.2885E+11 bytes
+Fixed Size                 30308320 bytes
+Variable Size            5.3687E+10 bytes
+Database Buffers         7.4893E+10 bytes
+Redo Buffers              238092288 bytes
+Database mounted.
+Database opened.
+SQL> set lines 200 pages 200
+col comp_name for a40
+SQL> SQL>
+SQL> select comp_name, status from dba_registry;
+
+COMP_NAME                                STATUS
+---------------------------------------- --------------------------------------------
+Oracle Database Catalog Views            UPGRADED
+Oracle Database Packages and Types       UPGRADED
+JServer JAVA Virtual Machine             UPGRADED
+Oracle XDK                               UPGRADED
+Oracle Database Java Packages            UPGRADED
+OLAP Analytic Workspace                  UPGRADED
+Oracle Real Application Clusters         UPGRADED
+Oracle XML Database                      UPGRADED
+Oracle Workspace Manager                 UPGRADED
+Oracle Text                              UPGRADED
+Oracle Multimedia                        UPGRADED
+Spatial                                  UPGRADED
+Oracle OLAP API                          UPGRADED
+Oracle Label Security                    UPGRADED
+Oracle Database Vault                    UPGRADED
+
+15 rows selected.
+
+SQL> @$ORACLE_HOME/rdbms/admin/utlrp.sql
+
+Session altered.
+
+
+TIMESTAMP
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+COMP_TIMESTAMP UTLRP_BGN              2024-08-08 12:34:55
+
+DOC>   The following PL/SQL block invokes UTL_RECOMP to recompile invalid
+DOC>   objects in the database. Recompilation time is proportional to the
+DOC>   number of invalid objects in the database, so this command may take
+DOC>   a long time to execute on a database with a large number of invalid
+DOC>   objects.
+DOC>
+DOC>   Use the following queries to track recompilation progress:
+DOC>
+DOC>   1. Query returning the number of invalid objects remaining. This
+DOC>      number should decrease with time.
+DOC>         SELECT COUNT(*) FROM obj$ WHERE status IN (4, 5, 6);
+DOC>
+DOC>   2. Query returning the number of objects compiled so far. This number
+DOC>      should increase with time.
+DOC>         SELECT COUNT(*) FROM UTL_RECOMP_COMPILED;
+DOC>
+DOC>   This script automatically chooses serial or parallel recompilation
+DOC>   based on the number of CPUs available (parameter cpu_count) multiplied
+DOC>   by the number of threads per CPU (parameter parallel_threads_per_cpu).
+DOC>   On RAC, this number is added across all RAC nodes.
+DOC>
+DOC>   UTL_RECOMP uses DBMS_SCHEDULER to create jobs for parallel
+DOC>   recompilation. Jobs are created without instance affinity so that they
+DOC>   can migrate across RAC nodes. Use the following queries to verify
+DOC>   whether UTL_RECOMP jobs are being created and run correctly:
+DOC>
+DOC>   1. Query showing jobs created by UTL_RECOMP
+DOC>         SELECT job_name FROM dba_scheduler_jobs
+DOC>            WHERE job_name like 'UTL_RECOMP_SLAVE_%';
+DOC>
+DOC>   2. Query showing UTL_RECOMP jobs that are running
+DOC>         SELECT job_name FROM dba_scheduler_running_jobs
+DOC>            WHERE job_name like 'UTL_RECOMP_SLAVE_%';
+DOC>#
+
+
+PL/SQL procedure successfully completed.
+
+
+TIMESTAMP
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+COMP_TIMESTAMP UTLRP_END              2024-08-08 12:35:59
+
+DOC> The following query reports the number of invalid objects.
+DOC>
+DOC> If the number is higher than expected, please examine the error
+DOC> messages reported with each object (using SHOW ERRORS) to see if they
+DOC> point to system misconfiguration or resource constraints that must be
+DOC> fixed before attempting to recompile these objects.
+DOC>#
+
+OBJECTS WITH ERRORS
+-------------------
+                 12
+
+DOC> The following query reports the number of exceptions caught during
+DOC> recompilation. If this number is non-zero, please query the error
+DOC> messages in the table UTL_RECOMP_ERRORS to see if any of these errors
+DOC> are due to misconfiguration or resource constraints that must be
+DOC> fixed before objects can compile successfully.
+DOC> Note: Typical compilation errors (due to coding errors) are not
+DOC>       logged into this table: they go into DBA_ERRORS instead.
+DOC>#
+
+ERRORS DURING RECOMPILATION
+---------------------------
+                          0
+
+
+Function created.
+
+
+PL/SQL procedure successfully completed.
+
+
+Function dropped.
+
+
+PL/SQL procedure successfully completed.
+
+SQL> SQL> select comp_name, status from dba_registry;
+
+COMP_NAME                                STATUS
+---------------------------------------- --------------------------------------------
+Oracle Database Catalog Views            VALID
+Oracle Database Packages and Types       VALID
+JServer JAVA Virtual Machine             VALID
+Oracle XDK                               VALID
+Oracle Database Java Packages            VALID
+OLAP Analytic Workspace                  VALID
+Oracle Real Application Clusters         OPTION OFF
+Oracle XML Database                      VALID
+Oracle Workspace Manager                 VALID
+Oracle Text                              VALID
+Oracle Multimedia                        VALID
+Spatial                                  VALID
+Oracle OLAP API                          VALID
+Oracle Label Security                    VALID
+Oracle Database Vault                    VALID
+
+15 rows selected.
+
+
