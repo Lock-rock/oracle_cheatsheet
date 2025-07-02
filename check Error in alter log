@@ -21,3 +21,18 @@ TO_CHAR (ORIGINATING_TIMESTAMP, 'DD-MON-YYYY HH24:MI:SS') Occur_date
 FROM X$DBGALERTEXT
 WHERE (MESSAGE_TEXT LIKE '%ORA-%' OR UPPER (MESSAGE_TEXT) LIKE '%ERROR%' OR UPPER (MESSAGE_TEXT) LIKE '%ALTER SYSTEM%' OR UPPER (MESSAGE_TEXT) LIKE '%ALTER DATABASE%')
 AND CAST (ORIGINATING_TIMESTAMP AS DATE) > SYSDATE - 30;
+
+
+check error on database in oracle:
+SELECT 
+    TO_CHAR(A.ORIGINATING_TIMESTAMP, 'dd.mm.yyyy') AS MESSAGE_TIME,
+    message_text,
+    host_id,
+    instance_id  -- Adjusted to the correct column name
+FROM 
+    V$DIAG_ALERT_EXT A
+WHERE 
+    component_id = 'rdbms'
+    AND message_text LIKE '%ORA-%'
+ORDER BY 
+    MESSAGE_TIME DESC;    
