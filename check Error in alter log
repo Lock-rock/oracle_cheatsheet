@@ -1,0 +1,13 @@
+Check error in alter log in last 30 mint:
+
+SELECT 
+    record_id, 
+    TO_CHAR(originating_timestamp, 'DD-MON-YYYY HH24:MI:SS') AS formatted_timestamp, 
+    message_text 
+FROM 
+    X$DBGALERTEXT 
+WHERE 
+    originating_timestamp > SYSTIMESTAMP - INTERVAL '30' MINUTE 
+    AND REGEXP_LIKE(message_text, '(ORA-|error)') 
+ORDER BY 
+    record_id;
