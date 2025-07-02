@@ -1,3 +1,9 @@
+Alert log path in oracle:
+set lines 200
+col name format a30
+col value format a80
+SELECT * FROM V$DIAG_INFO;
+
 Check error in alter log in last 30 mint:
 
 SELECT 
@@ -36,3 +42,5 @@ WHERE
     AND message_text LIKE '%ORA-%'
 ORDER BY 
     MESSAGE_TIME DESC;    
+
+
