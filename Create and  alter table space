@@ -122,4 +122,55 @@ sqlplus / as sysdba
 	 d.extent_management like 'LOCAL' AND d.contents like 'TEMPORARY';
 	 
 
+Check tablespace size in GB and sum:
+
+SET ECHO OFF 
+SET FEEDBACK OFF 
+SET VERIFY OFF 
+SET PAGESIZE 75
+
+COLUMN "Tablespace Name" FORMAT A20 HEAD 'Tablespace Name'
+COLUMN "Total (GB)" FORMAT 999,999,999.99 HEAD 'Total (GB)'
+COLUMN "Used (GB)" FORMAT 999,999,999.99 HEAD 'Used (GB)'
+COLUMN "Free (GB)" FORMAT 999,999,999.99 HEAD 'Free (GB)'
+COLUMN "Percent Used" FORMAT 999 HEAD 'Percent|Used'
+
+BREAK ON REPORT
+COMPUTE SUM OF "Total (GB)" ON REPORT
+COMPUTE SUM OF "Used (GB)" ON REPORT
+COMPUTE SUM OF "Free (GB)" ON REPORT
+
+SELECT 
+    tbs.tablespace_name AS "Tablespace Name",
+    ROUND(tot.bytes / 1024 / 1024 / 1024, 2) AS "Total (GB)",
+    ROUND((tot.bytes - NVL(SUM(fre.bytes), 0)) / 1024 / 1024 / 1024, 2) AS "Used (GB)",
+    ROUND(NVL(SUM(fre.bytes), 0) / 1024 / 1024 / 1024, 2) AS "Free (GB)",
+    ROUND((1 - NVL(SUM(fre.bytes), 0) / tot.bytes) * 100, 2) AS "Percent Used"
+FROM 
+    dba_tablespaces tbs
+JOIN 
+    (SELECT tablespace_name, SUM(bytes) AS bytes 
+     FROM dba_data_files 
+     GROUP BY tablespace_name) tot ON tbs.tablespace_name = tot.tablespace_name
+LEFT JOIN 
+    dba_free_space fre ON tbs.tablespace_name = fre.tablespace_name
+GROUP BY 
+    tbs.tablespace_name, tot.bytes
+UNION ALL
+SELECT 
+    tsh.tablespace_name AS "Tablespace Name",
+    ROUND(dtf.bytes / 1024 / 1024 / 1024, 2) AS "Total (GB)",
+    ROUND(SUM(NVL(tsh.bytes_used, 0)) / 1024 / 1024 / 1024, 2) AS "Used (GB)",
+    ROUND(SUM(NVL(tsh.bytes_free, 0)) / 1024 / 1024 / 1024, 2) AS "Free (GB)",
+    ROUND((1 - SUM(NVL(tsh.bytes_free, 0)) / dtf.bytes) * 100, 2) AS "Percent Used"
+FROM 
+    v$temp_space_header tsh
+JOIN 
+    (SELECT tablespace_name, SUM(bytes) AS bytes 
+     FROM dba_temp_files 
+     GROUP BY tablespace_name) dtf ON dtf.tablespace_name = tsh.tablespace_name
+GROUP BY 
+    tsh.tablespace_name, dtf.bytes
+ORDER BY 
+    1;
 
