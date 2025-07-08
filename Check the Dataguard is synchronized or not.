@@ -1,0 +1,6 @@
+select process, client_process,thread#,sequence#,status from v$managed_standby where process like '%MRP%';
+
+select name,value from v$dataguard_stats;
+
+set lines 1000 
+select name,value from v$dataguard_stats;
