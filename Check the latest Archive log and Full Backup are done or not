@@ -1,0 +1,4 @@
+set pagesize 1000 line 200;
+SELECT TO_CHAR (start_time, 'DD-MM-YYYY HH24:MI:SS') start_time, input_type, status, ROUND (elapsed_seconds / 3600, 1) time_hr,INPUT_BYTES/1024/1024/1024 IN_GB,OUTPUT_BYTES/1024/1024/1024 OUT_GB ,OUTPUT_DEVICE_TYPE FROM 
+v$rman_backup_job_details WHERE START_TIME > SYSDATE - 3 ORDER BY start_time DESC;
+
