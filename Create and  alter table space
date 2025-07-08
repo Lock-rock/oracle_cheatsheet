@@ -37,6 +37,7 @@ t.tablespace_name(+) AND
 (d.extent_management like 'LOCAL' AND d.contents like 'TEMPORARY');
 
 
+
 CREATE TABLESPACE:
 
 CREATE TABLESPACE users_data DATAFILE '/u01/app/oracle/oradata/mydb/users_data.dbf' SIZE 100M AUTOEXTEND ON MAXSIZE 1G EXTENT MANAGEMENT LOCAL;
