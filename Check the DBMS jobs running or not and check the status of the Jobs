@@ -1,0 +1,11 @@
+-- Failed Scheduled Jobs 
+SELECT owner, job_name,status,LOG_DATE, ERROR#, ( EXTRACT (SECOND FROM run_duration) /60 + EXTRACT (MINUTE FROM run_duration) + EXTRACT (HOUR FROM run_duration) * 60 + EXTRACT (DAY FROM run_duration) * 60 * 24) MINUTES,ADDITIONAL_INFO 
+FROM dba_scheduler_job_run_details
+WHERE LOG_DATE > SYSDATE - 1 AND status != 'SUCCEEDED' ORDER BY 1 ASC, 4 DESC;
+
+
+
+-- Running and Succeeded Scheduled Jobs
+SELECT OWNER, JOB_NAME, LAST_START_DATE, STATE
+FROM DBA_SCHEDULER_JOBS
+WHERE LAST_START_DATE > SYSDATE - 1 AND STATE <> 'SCHEDULED';
