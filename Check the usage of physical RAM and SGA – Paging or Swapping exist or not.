@@ -1,0 +1,7 @@
+$free -m
+
+set linesize 150
+set pagesize 150
+select * from v$sgainfo;
+
+select * from v$sgastat;
