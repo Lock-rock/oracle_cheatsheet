@@ -1,0 +1,101 @@
+-- Set column formatting for better readability
+SET LINESIZE 200
+SET PAGESIZE 1000
+COLUMN username FORMAT A20
+COLUMN granted_role FORMAT A25
+COLUMN privilege FORMAT A25
+COLUMN owner FORMAT A15
+COLUMN table_name FORMAT A30
+COLUMN column_name FORMAT A20
+
+-- System privileges granted to users
+PROMPT ============ SYSTEM PRIVILEGES ============
+SELECT 
+    grantee AS username,
+    privilege,
+    admin_option
+FROM 
+    dba_sys_privs
+WHERE 
+    grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    grantee, privilege;
+
+-- Role privileges granted to users
+PROMPT ============ ROLE PRIVILEGES ============
+SELECT 
+    grantee AS username,
+    granted_role,
+    admin_option,
+    default_role
+FROM 
+    dba_role_privs
+WHERE 
+    grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    grantee, granted_role;
+
+-- Object privileges granted to users
+PROMPT ============ OBJECT PRIVILEGES ============
+SELECT 
+    grantee AS username,
+    owner,
+    table_name,
+    privilege,
+    grantable
+FROM 
+    dba_tab_privs
+WHERE 
+    grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    grantee, owner, table_name;
+
+-- Column-level privileges
+PROMPT ============ COLUMN PRIVILEGES ============
+SELECT 
+    grantee AS username,
+    owner,
+    table_name,
+    column_name,
+    privilege,
+    grantable
+FROM 
+    dba_col_privs
+WHERE 
+    grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    grantee, owner, table_name, column_name;
+
+-- System privileges granted through roles
+PROMPT ============ SYSTEM PRIVILEGES THROUGH ROLES ============
+SELECT 
+    rp.grantee AS username,
+    rp.granted_role,
+    sp.privilege,
+    sp.admin_option
+FROM 
+    dba_role_privs rp
+JOIN 
+    dba_sys_privs sp ON rp.granted_role = sp.grantee
+WHERE 
+    rp.grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    rp.grantee, rp.granted_role, sp.privilege;
+
+-- Object privileges granted through roles
+PROMPT ============ OBJECT PRIVILEGES THROUGH ROLES ============
+SELECT 
+    rp.grantee AS username,
+    rp.granted_role,
+    tp.owner,
+    tp.table_name,
+    tp.privilege,
+    tp.grantable
+FROM 
+    dba_role_privs rp
+JOIN 
+    dba_tab_privs tp ON rp.granted_role = tp.grantee
+WHERE 
+    rp.grantee IN (SELECT username FROM dba_users)
+ORDER BY 
+    rp.grantee, rp.granted_role, tp.owner, tp.table_name;
