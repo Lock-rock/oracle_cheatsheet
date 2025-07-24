@@ -104,82 +104,36 @@ ORDER BY USERNAME,
          A.COLUMN_NAME,
          A.PRIVILEGE;
 
-Multiple users access information:
-COL USERNAME FOR A15
-COL PRIVILEGE FOR A25
-COL OWNER FOR A15
-COL TABLENAME FOR A30
-COL COLUMN_NAME FOR A25
-COL ADMIN_OPTION FOR A15
-SET LINESIZE 200
-
-SELECT A.*
-    FROM (SELECT GRANTEE          USERNAME,
-                 GRANTED_ROLE     PRIVILEGE,
-                 '--'             OWNER,
-                 '--'             TABLENAME,
-                 '--'             COLUMN_NAME,
-                 ADMIN_OPTION     ADMIN_OPTION,
-                 'ROLE'           ACCESS_TYPE
-            FROM DBA_ROLE_PRIVS RP JOIN DBA_ROLES R ON RP.GRANTED_ROLE = R.ROLE
-           WHERE GRANTEE IN (SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN ('SCOTT','HR','BI'))
-          UNION
-          SELECT GRANTEE          USERNAME,
-                 PRIVILEGE        PRIVILEGE,
-                 '--'             OWNER,
-                 '--'             TABLENAME,
-                 '--'             COLUMN_NAME,
-                 ADMIN_OPTION     ADMIN_OPTION,
-                 'SYSTEM'         ACCESS_TYPE
-            FROM DBA_SYS_PRIVS
-           WHERE GRANTEE IN (SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN ('SCOTT','HR','BI'))
-          UNION
-          SELECT GRANTEE        USERNAME,
-                 PRIVILEGE      PRIVILEGE,
-                 OWNER          OWNER,
-                 TABLE_NAME     TABLENAME,
-                 '--'           COLUMN_NAME,
-                 GRANTABLE      ADMIN_OPTION,
-                 'TABLE'        ACCESS_TYPE
-            FROM DBA_TAB_PRIVS
-           WHERE GRANTEE IN (SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN ('SCOTT','HR','BI'))
-          UNION
-          SELECT DP.GRANTEE      USERNAME,
-                 PRIVILEGE       PRIVILEGE,
-                 OWNER           OWNER,
-                 TABLE_NAME      TABLENAME,
-                 COLUMN_NAME     COLUMN_NAME,
-                 '--'            ADMIN_OPTION,
-                 'ROLE'          ACCESS_TYPE
-            FROM ROLE_TAB_PRIVS RP, DBA_ROLE_PRIVS DP
-           WHERE     RP.ROLE = DP.GRANTED_ROLE
-                 AND DP.GRANTEE IN (SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN ('SCOTT','HR','BI'))
-          UNION
-          SELECT GRANTEE         USERNAME,
-                 PRIVILEGE       PRIVILEGE,
-                 GRANTABLE       ADMIN_OPTION,
-                 OWNER           OWNER,
-                 TABLE_NAME      TABLENAME,
-                 COLUMN_NAME     COLUMN_NAME,
-                 'COLUMN'        ACCESS_TYPE
-            FROM DBA_COL_PRIVS
-           WHERE GRANTEE IN (SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN ('SCOTT','HR','BI'))) A
-ORDER BY USERNAME,
-         A.TABLENAME,
-         CASE
-             WHEN A.ACCESS_TYPE = 'SYSTEM' THEN 1
-             WHEN A.ACCESS_TYPE = 'TABLE' THEN 2
-             WHEN A.ACCESS_TYPE = 'COLUMN' THEN 3
-             WHEN A.ACCESS_TYPE = 'ROLE' THEN 4
-             ELSE 5
-         END,
-         CASE
-             WHEN A.PRIVILEGE IN ('EXECUTE') THEN 1
-             WHEN A.PRIVILEGE IN ('SELECT', 'INSERT', 'DELETE') THEN 3
-             ELSE 2
-         END,
-         A.COLUMN_NAME,
-         A.PRIVILEGE;
+Check users access information:
+WITH data 
+     AS (SELECT granted_role 
+         FROM   dba_role_privs 
+         CONNECT BY PRIOR granted_role = grantee 
+         START WITH grantee = '&USER') 
+SELECT 'SYSTEM'     typ, 
+       grantee      grantee, 
+       privilege    priv, 
+       admin_option ad, 
+       '--'         tabnm, 
+       '--'         colnm, 
+       '--'         owner 
+FROM   dba_sys_privs 
+WHERE  grantee = '&USER' 
+        OR grantee IN (SELECT granted_role 
+                       FROM   data) 
+UNION 
+SELECT 'TABLE'    typ, 
+       grantee    grantee, 
+       privilege  priv, 
+       grantable  ad, 
+       table_name tabnm, 
+       '--'       colnm, 
+       owner      owner 
+FROM   dba_tab_privs 
+WHERE  grantee = '&USER' 
+        OR grantee IN (SELECT granted_role 
+                       FROM   data) 
+ORDER  BY 1; 
 
 
 Access list for a user:
